@@ -26,6 +26,8 @@ const RAW_RUNTIME_STATE =
       [null, {\
         "packageLocation": "./",\
         "packageDependencies": [\
+          ["@fontsource-variable/pixelify-sans", "npm:5.2.5"],\
+          ["@lucide/astro", "virtual:636790cb86eed641eab24d7418f3b5039da9b2ffed1da7353e3b6f5e047de791f9a483a8943224981595b888f91a4b85fb31ea2d208c6604fd3cdf5f9fe51af8#npm:0.487.0"],\
           ["@openzeppelin/upgrades-core", "npm:1.42.2"],\
           ["@tailwindcss/vite", "virtual:636790cb86eed641eab24d7418f3b5039da9b2ffed1da7353e3b6f5e047de791f9a483a8943224981595b888f91a4b85fb31ea2d208c6604fd3cdf5f9fe51af8#npm:4.1.3"],\
           ["astro", "npm:5.6.1"],\
@@ -391,6 +393,15 @@ const RAW_RUNTIME_STATE =
         "linkType": "HARD"\
       }]\
     ]],\
+    ["@fontsource-variable/pixelify-sans", [\
+      ["npm:5.2.5", {\
+        "packageLocation": "../../.yarn/berry/cache/@fontsource-variable-pixelify-sans-npm-5.2.5-6a5cb8780d-10c0.zip/node_modules/@fontsource-variable/pixelify-sans/",\
+        "packageDependencies": [\
+          ["@fontsource-variable/pixelify-sans", "npm:5.2.5"]\
+        ],\
+        "linkType": "HARD"\
+      }]\
+    ]],\
     ["@img/sharp-darwin-arm64", [\
       ["npm:0.33.5", {\
         "packageLocation": "./.yarn/unplugged/@img-sharp-darwin-arm64-npm-0.33.5-c319591c53/node_modules/@img/sharp-darwin-arm64/",\
@@ -610,6 +621,28 @@ const RAW_RUNTIME_STATE =
         "packageLocation": "../../.yarn/berry/cache/@jridgewell-sourcemap-codec-npm-1.5.0-dfd9126d71-10c0.zip/node_modules/@jridgewell/sourcemap-codec/",\
         "packageDependencies": [\
           ["@jridgewell/sourcemap-codec", "npm:1.5.0"]\
+        ],\
+        "linkType": "HARD"\
+      }]\
+    ]],\
+    ["@lucide/astro", [\
+      ["npm:0.487.0", {\
+        "packageLocation": "../../.yarn/berry/cache/@lucide-astro-npm-0.487.0-fbf34d4a23-10c0.zip/node_modules/@lucide/astro/",\
+        "packageDependencies": [\
+          ["@lucide/astro", "npm:0.487.0"]\
+        ],\
+        "linkType": "SOFT"\
+      }],\
+      ["virtual:636790cb86eed641eab24d7418f3b5039da9b2ffed1da7353e3b6f5e047de791f9a483a8943224981595b888f91a4b85fb31ea2d208c6604fd3cdf5f9fe51af8#npm:0.487.0", {\
+        "packageLocation": "./.yarn/__virtual__/@lucide-astro-virtual-d5c600953b/3/.yarn/berry/cache/@lucide-astro-npm-0.487.0-fbf34d4a23-10c0.zip/node_modules/@lucide/astro/",\
+        "packageDependencies": [\
+          ["@lucide/astro", "virtual:636790cb86eed641eab24d7418f3b5039da9b2ffed1da7353e3b6f5e047de791f9a483a8943224981595b888f91a4b85fb31ea2d208c6604fd3cdf5f9fe51af8#npm:0.487.0"],\
+          ["@types/astro", null],\
+          ["astro", "npm:5.6.1"]\
+        ],\
+        "packagePeers": [\
+          "@types/astro",\
+          "astro"\
         ],\
         "linkType": "HARD"\
       }]\
@@ -4613,6 +4646,8 @@ const RAW_RUNTIME_STATE =
         "packageLocation": "./",\
         "packageDependencies": [\
           ["src", "workspace:."],\
+          ["@fontsource-variable/pixelify-sans", "npm:5.2.5"],\
+          ["@lucide/astro", "virtual:636790cb86eed641eab24d7418f3b5039da9b2ffed1da7353e3b6f5e047de791f9a483a8943224981595b888f91a4b85fb31ea2d208c6604fd3cdf5f9fe51af8#npm:0.487.0"],\
           ["@openzeppelin/upgrades-core", "npm:1.42.2"],\
           ["@tailwindcss/vite", "virtual:636790cb86eed641eab24d7418f3b5039da9b2ffed1da7353e3b6f5e047de791f9a483a8943224981595b888f91a4b85fb31ea2d208c6604fd3cdf5f9fe51af8#npm:4.1.3"],\
           ["astro", "npm:5.6.1"],\
