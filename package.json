@@ -1,32 +1,41 @@
 {
-  "name": "src",
+  "name": "evm-storage.codes",
+  "private": true,
+  "version": "0.0.0",
   "type": "module",
-  "version": "0.0.1",
   "scripts": {
-    "dev": "astro dev",
-    "build": "astro build",
-    "preview": "astro preview",
-    "astro": "astro"
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@astrojs/react": "^4.2.3",
     "@fontsource-variable/pixelify-sans": "^5.2.5",
-    "@lucide/astro": "^0.487.0",
-    "@openzeppelin/upgrades-core": "^1.42.2",
     "@radix-ui/react-slot": "^1.1.2",
     "@radix-ui/react-tabs": "^1.1.3",
     "@tailwindcss/vite": "^4.1.3",
-    "@types/react": "^19.1.0",
-    "@types/react-dom": "^19.1.1",
-    "astro": "^5.6.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.487.0",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "tailwind-merge": "^3.1.0",
     "tailwindcss": "^4.1.3",
     "tw-animate-css": "^1.2.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.21.0",
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react-swc": "^3.8.0",
+    "eslint": "^9.21.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
+    "globals": "^15.15.0",
+    "typescript": "~5.7.2",
+    "typescript-eslint": "^8.24.1",
+    "vite": "^6.2.0"
   },
   "packageManager": "yarn@4.0.2+sha512.4e502bea682e7d8004561f916f1da2dfbe6f718024f6aa50bf8cd86f38ea3a94a7f1bf854a9ca666dd8eafcfb8d44baaa91bf5c7876e79a7aeac952c332f0e88"
 }
