@@ -1,15 +1,35 @@
+import { useState, createContext } from "react";
+import Landing from "@/components/Landing";
+import Header from "@/components/Header";
 import StorageVisualizer from "@/components/StorageVisualizer";
-import { useState } from "react";
+import Footer from "./components/Footer";
+
+export const StorageLayoutsContext = createContext();
 
 function App() {
-  const [storageLayout, setStorageLayout] = useState(["PEPESITO", "PEPE"]);
+  const [storageLayouts, setStorageLayouts] = useState(["USDC", "ORIGIN", "SHIBA"]);
 
   return (
-      <div className="flex flex-row gap-4">
-        {storageLayout.map((contractName, index) => (
-          <StorageVisualizer key={index} contractName={contractName} />
-        ))}
-      </div>
+    <StorageLayoutsContext.Provider
+      value={{
+        storageLayouts: storageLayouts,
+        setStorageLayouts: setStorageLayouts,
+      }}
+    >
+      {storageLayouts.length === 0 ? (
+        <Landing />
+      ) : (
+        <div className="h-screen w-screen bg-black text-green-500 px-4">
+          <Header />
+          <div className=" flex flex-col md:flex-row gap-3">
+            {storageLayouts.map((contractName, index) => (
+              <StorageVisualizer key={index} contractName={contractName} />
+            ))}
+          </div>
+          <Footer />
+        </div>
+      )}
+    </StorageLayoutsContext.Provider>
   );
 }
 

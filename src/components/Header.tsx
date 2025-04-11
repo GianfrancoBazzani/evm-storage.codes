@@ -1,6 +1,6 @@
 import { Github } from "lucide-react";
 
-export function Header() {
+export default function Header() {
   return (
     <header className="flex justify-between items-center mb-3 mt-2 border-b border-green-500 pb-1">
       <div className="flex flex-row items-center gap-2">
