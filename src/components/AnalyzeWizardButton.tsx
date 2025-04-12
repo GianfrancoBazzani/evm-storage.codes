@@ -1,5 +1,5 @@
-import { useContext, useState } from "react";
-import { StorageLayoutsContext } from "../App";
+// import { useContext, useState } from "react";
+// import { StorageLayoutsContext } from "../App";
 import { Search } from "lucide-react";
 import {
   Dialog,
@@ -10,49 +10,48 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+// import {
+//   Select,
+//   SelectContent,
+//   SelectItem,
+//   SelectTrigger,
+//   SelectValue,
+// } from "@/components/ui/select";
 
-import type { ChangeEvent } from "react";
+// import type { ChangeEvent } from "react";
 
 export default function AnalyzeWizardButton() {
   // Global context
-  const { storageLayouts, setStorageLayouts } = useContext(
-    StorageLayoutsContext
-  );
-
-  // Local state for file upload, compiler version, and contract selection
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [compilerVersion, setCompilerVersion] = useState<string>("");
-  const [compiledContracts, setCompiledContracts] = useState<string[]>([]);
-  const [selectedContract, setSelectedContract] = useState<string>("");
-
-  function handleFileUpload(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0] || null;
-    setUploadedFile(file);
-    // Simulate compilation to produce a list of contracts
-    if (file) {
-      setCompiledContracts(["MyContract", "YourContract"]);
-    }
-  }
-
-  function handleAnalyze() {
-    if (selectedContract && compilerVersion) {
-      // For demonstration, update global storage layouts with the selected contract
-      setStorageLayouts([...storageLayouts, selectedContract]);
-    }
-  }
+  // const { storageLayouts, setStorageLayouts } = useContext(
+  //   StorageLayoutsContext
+  // );
+// 
+  // // Local state for file upload, compiler version, and contract selection
+  // const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  // const [compilerVersion, setCompilerVersion] = useState<string>("");
+  // const [compiledContracts, setCompiledContracts] = useState<string[]>([]);
+  // const [selectedContract, setSelectedContract] = useState<string>("");
+// 
+  // function handleFileUpload(e: ChangeEvent<HTMLInputElement>) {
+  //   const file = e.target.files?.[0] || null;
+  //   setUploadedFile(file);
+  //   // Simulate compilation to produce a list of contracts
+  //   if (file) {
+  //     setCompiledContracts(["MyContract", "YourContract"]);
+  //   }
+  // }
+// 
+  // function handleAnalyze() {
+  //   if (selectedContract && compilerVersion) {
+  //     // For demonstration, update global storage layouts with the selected contract
+  //     setStorageLayouts([...storageLayouts, selectedContract]);
+  //   }
+  // }
 
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button className="bg-green-900/30 text-green-400 border border-green-500 hover:bg-green-600/40 hover:text-green-300 transition-all duration-300 px-8 py-6 text-lg animate-pulse">
+        <Button className="bg-green-900/30 text-green-500 border border-green-500 hover:bg-green-600/40 hover:text-green-300 transition-all duration-300 px-8 py-6 text-lg animate-pulse">
           <Search className="mr-2 h-4 w-4" /> ANALYZE ADDRESS
         </Button>
       </DialogTrigger>

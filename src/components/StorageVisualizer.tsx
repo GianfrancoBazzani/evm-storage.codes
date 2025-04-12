@@ -2,7 +2,7 @@ import { useContext } from "react";
 import { Code, Copy, X, GitCompareArrows } from "lucide-react"; // changed from "@lucide/astro" to the React version
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
   TooltipContent,
@@ -30,9 +30,11 @@ export default function StorageVisualizer({
   contractName,
 }: StorageVisualizerProps) {
   // Global context
-  const { storageLayouts, setStorageLayouts } = useContext(
-    StorageLayoutsContext
-  );
+  const storageLayoutsContext = useContext(StorageLayoutsContext);
+  if (!storageLayoutsContext) {
+    throw new Error("StorageLayoutsContext is undefined");
+  }
+  const { setStorageLayouts } = storageLayoutsContext;
 
   // Close Visualizer
   function handleClose() {
@@ -60,12 +62,12 @@ export default function StorageVisualizer({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6 text-green-500 hover:bg-green-900/30 hover:text-green-400 hover:rounded"
+                className="h-6 w-6 text-green-500 hover:bg-green-900/30 hover:text-green-500 hover:rounded"
               >
                 <Copy className="h-3 w-3" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent className="bg-green-700 border-green-950 border text-green-200 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
+            <TooltipContent className="bg-green-700 border-green-950 border text-black px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
               Copy
             </TooltipContent>
           </Tooltip>
@@ -76,13 +78,13 @@ export default function StorageVisualizer({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 text-green-500 hover:bg-green-900/30 hover:text-green-400 hover:rounded"
+                    className="h-6 w-6 text-green-500 hover:bg-green-900/30 hover:text-green-500 hover:rounded"
                   >
                     <GitCompareArrows className="h-3 w-3" />
                   </Button>
                 </DialogTrigger>
               </TooltipTrigger>
-              <TooltipContent className="bg-green-700 border-green-950 border text-green-200 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
+              <TooltipContent className="bg-green-700 border-green-950 border text-black px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
                 Compare
               </TooltipContent>
             </Tooltip>
@@ -111,12 +113,12 @@ export default function StorageVisualizer({
                 variant="ghost"
                 size="icon"
                 onClick={handleClose}
-                className="h-6 w-6 text-green-500 hover:bg-green-900/30 hover:text-green-400 hover:rounded"
+                className="h-6 w-6 text-green-500 hover:bg-green-900/30 hover:text-green-500 hover:rounded"
               >
                 <X className="h-3 w-3" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent className="bg-green-700 border-green-950 border text-green-200  px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
+            <TooltipContent className="bg-green-700 border-green-950 border text-black  px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
               Close
             </TooltipContent>
           </Tooltip>
@@ -129,7 +131,7 @@ export default function StorageVisualizer({
           <TabsList className="bg-transparent h-9 flex items-center">
             <TabsTrigger
               value="root-layout"
-              className="text-green-500 data-[state=active]:bg-green-900/30 data-[state=active]:text-green-400 data-[state=active]:shadow-none rounded-none border-r"
+              className="text-green-500 data-[state=active]:bg-green-900/30 data-[state=active]:text-green-500 data-[state=active]:shadow-none rounded-none border-r"
             >
               ROOT Layout
             </TabsTrigger>
@@ -138,7 +140,7 @@ export default function StorageVisualizer({
               TODO: Add other layouts (ERC-7201, Transient storage)
             <TabsTrigger
               value="html"
-              className="text-green-500 data-[state=active]:bg-green-900/30 data-[state=active]:text-green-400 data-[state=active]:shadow-none rounded-none border-r"
+              className="text-green-500 data-[state=active]:bg-green-900/30 data-[state=active]:text-green-500 data-[state=active]:shadow-none rounded-none border-r"
             >
               index.html
             </TabsTrigger>
@@ -146,14 +148,14 @@ export default function StorageVisualizer({
           </TabsList>
         </div>
         <TabsContent value="root-layout" className="mt-0">
-          <pre className="p-4 overflow-x-auto text-green-400 text-sm leading-relaxed">
+          <pre className="p-4 overflow-x-auto text-green-500 text-sm leading-relaxed">
             <code>TODO Add Layout</code>
           </pre>
         </TabsContent>
         {/*
           TODO: Add other layouts (ERC-7201, Transient storage)
         <TabsContent value="html" className="mt-0">
-          <pre className="p-4 overflow-x-auto text-green-400 text-sm leading-relaxed">
+          <pre className="p-4 overflow-x-auto text-green-500 text-sm leading-relaxed">
             <code>Sample</code>
           </pre>
         </TabsContent>

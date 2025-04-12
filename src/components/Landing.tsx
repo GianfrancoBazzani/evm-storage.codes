@@ -1,5 +1,3 @@
-import React from "react";
-import { Button } from "@/components/ui/button";
 import { Github, Coffee} from "lucide-react";
 import UploadWizardButton from "@/components/UploadWizardButton";
 import AnalyzeWizardButton from "@/components/AnalyzeWizardButton";
