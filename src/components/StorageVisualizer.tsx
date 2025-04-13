@@ -1,5 +1,5 @@
-import { useContext } from "react";
-import { Code, Copy, X, GitCompareArrows } from "lucide-react"; // changed from "@lucide/astro" to the React version
+import { useContext, useState } from "react";
+import { Code, Copy, X, GitCompareArrows, Cross } from "lucide-react"; // changed from "@lucide/astro" to the React version
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -21,13 +21,15 @@ import UploadWizardButton from "@/components/UploadWizardButton";
 import AnalyzeWizardButton from "@/components/AnalyzeWizardButton";
 //import { StorageLayout } from "@openzeppelin/upgrades-core";
 
-interface StorageVisualizerProps {
+export interface StorageVisualizerProps {
   contractName: string;
+  id: number;
   //storageLayout:  null; // Storage layout
 }
 
 export default function StorageVisualizer({
   contractName,
+  id,
 }: StorageVisualizerProps) {
   // Global context
   const storageLayoutsContext = useContext(StorageLayoutsContext);
@@ -36,11 +38,19 @@ export default function StorageVisualizer({
   }
   const { setStorageLayouts } = storageLayoutsContext;
 
+  // Parent dialog controlled state
+  const [isAddContractDialogOpen, setAddContractDialogOpen] = useState(false);
+
   // Close Visualizer
   function handleClose() {
-    setStorageLayouts((prevLayouts) =>
-      prevLayouts.filter((layout) => layout !== contractName)
-    );
+    setStorageLayouts((prevLayouts) => {
+      const newLayouts = prevLayouts.filter((layout) => layout.id !== id);
+      for (let i = 0; i < newLayouts.length; i++) {
+        newLayouts[i].id = i;
+      }
+      console.log(newLayouts);
+      return newLayouts;
+    });
   }
 
   return (
@@ -55,7 +65,7 @@ export default function StorageVisualizer({
             {contractName}
           </span>
         </div>
-        {/*  Roots Nav Tabs*/}
+        {/* Nav Tabs*/}
         <div className="flex gap-2">
           <Tooltip>
             <TooltipTrigger asChild>
@@ -71,7 +81,25 @@ export default function StorageVisualizer({
               Copy
             </TooltipContent>
           </Tooltip>
-          <Dialog>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-green-500 hover:bg-green-900/30 hover:text-green-500 hover:rounded"
+              >
+                <GitCompareArrows className="h-3 w-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="bg-green-700 border-green-950 border text-black px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
+              Compare
+            </TooltipContent>
+          </Tooltip>
+          {/* Add Contract Dialog */}
+          <Dialog
+            open={isAddContractDialogOpen}
+            onOpenChange={setAddContractDialogOpen}
+          >
             <Tooltip>
               <TooltipTrigger asChild>
                 <DialogTrigger asChild>
@@ -80,29 +108,38 @@ export default function StorageVisualizer({
                     size="icon"
                     className="h-6 w-6 text-green-500 hover:bg-green-900/30 hover:text-green-500 hover:rounded"
                   >
-                    <GitCompareArrows className="h-3 w-3" />
+                    <Cross className="h-3 w-3" />
                   </Button>
                 </DialogTrigger>
               </TooltipTrigger>
               <TooltipContent className="bg-green-700 border-green-950 border text-black px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
-                Compare
+                Add Contract
               </TooltipContent>
             </Tooltip>
-            <DialogContent className="bg-black border-green-500 p-6 rounded-md">
+            <DialogContent
+              onCloseAutoFocus={(e) => e.preventDefault()}
+              className="bg-black border-green-500 p-6 rounded-md"
+            >
               <DialogHeader>
                 <DialogTitle className="text-green-500">
-                  Compare With
+                  Choose Contract Source
                 </DialogTitle>
                 <DialogDescription
                   id="upload-dialog-description"
-                  className=" text-green-700"
+                  className="text-green-700"
                 >
-                  Choose a comparison method.
+                  Choose the origin of the contract sources for analysis.
                 </DialogDescription>
               </DialogHeader>
               <div className="mt-6 mb-6 flex flex-row justify-center gap-4">
-                <UploadWizardButton />
-                <AnalyzeWizardButton />
+                <UploadWizardButton
+                  setParentDialogOpen={setAddContractDialogOpen}
+                  triggerVisualizerId={id}
+                />
+                <AnalyzeWizardButton
+                //setParent={handleChildDialogClose} TODO: fix
+                //triggerVisualizerId={id}
+                />
                 {/* TODO: Add option to upload exported json */}
               </div>
             </DialogContent>
@@ -125,7 +162,7 @@ export default function StorageVisualizer({
         </div>
       </div>
 
-      {/*  Roots Content Tabs*/}
+      {/*  Content Tabs*/}
       <Tabs defaultValue="root-layout" className="w-full">
         <div className="border-b border-green-500/30 bg-green-900/10">
           <TabsList className="bg-transparent h-9 flex items-center">

@@ -7,11 +7,13 @@
     "dev": "vite",
     "vercel dev": "yarn run vercel dev",
     "build": "tsc -b && vite build",
+    "bundle-solc-worker": "npx browserify -t babelify src/lib/dyn-solc-worker.js > public/dyn-solc-worker-bundle.js ",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
     "@fontsource-variable/pixelify-sans": "^5.2.5",
+    "@openzeppelin/upgrades-core": "^1.43.0",
     "@radix-ui/react-dialog": "^1.1.6",
     "@radix-ui/react-select": "^2.1.6",
     "@radix-ui/react-slot": "^1.1.2",
@@ -29,12 +31,18 @@
     "tw-animate-css": "^1.2.5"
   },
   "devDependencies": {
+    "@babel/core": "^7.26.10",
+    "@babel/preset-env": "^7.26.9",
     "@eslint/js": "^9.21.0",
+    "@types/babel__core": "^7",
+    "@types/babel__preset-env": "^7",
     "@types/node": "^22.14.0",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "@vercel/node": "^5.1.14",
     "@vitejs/plugin-react-swc": "^3.8.0",
+    "babelify": "^10.0.0",
+    "browserify": "^17.0.1",
     "eslint": "^9.21.0",
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.19",
@@ -42,6 +50,7 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.24.1",
+    "util": "^0.12.5",
     "vercel": "^41.6.0",
     "vite": "^6.2.6"
   },

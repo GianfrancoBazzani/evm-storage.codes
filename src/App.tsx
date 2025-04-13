@@ -4,18 +4,20 @@ import Header from "@/components/Header";
 import StorageVisualizer from "@/components/StorageVisualizer";
 import Footer from "./components/Footer";
 
+import type { StorageVisualizerProps } from "@/components/StorageVisualizer";
+
 interface StorageLayoutsContextType {
-  storageLayouts: string[]; // TODO Set actual layout types
-  setStorageLayouts: Dispatch<SetStateAction<string[]>>;  // TODO Set actual layout types
+  storageLayouts: StorageVisualizerProps[];
+  setStorageLayouts: Dispatch<SetStateAction<StorageVisualizerProps[]>>;
 }
-export const StorageLayoutsContext = createContext<StorageLayoutsContextType | undefined>(undefined);
+export const StorageLayoutsContext = createContext<
+  StorageLayoutsContextType | undefined
+>(undefined);
 
 function App() {
-  const [storageLayouts, setStorageLayouts] = useState<string[]>([ // TODO Set actual layout types
-    "USDC",
-    "ORIGIN",
-    "SHIBA",
-  ]);
+  const [storageLayouts, setStorageLayouts] = useState<
+    StorageVisualizerProps[]
+  >([]);
 
   return (
     <div className="flex flex-col min-h-screen overflow-x-hidden bg-black">
@@ -32,8 +34,12 @@ function App() {
             <div className="flex-grow bg-black text-green-500 px-4">
               <Header />
               <div className="flex flex-col md:flex-row gap-3">
-                {storageLayouts.map((contractName, index) => (
-                  <StorageVisualizer key={index} contractName={contractName} />
+                {storageLayouts.map((storageLayouts, index) => (
+                  <StorageVisualizer
+                    key={index}
+                    contractName={storageLayouts.contractName}
+                    id={storageLayouts.id}
+                  />
                 ))}
               </div>
             </div>
