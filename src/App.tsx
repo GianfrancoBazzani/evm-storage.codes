@@ -38,6 +38,7 @@ function App() {
                   <StorageVisualizer
                     key={index}
                     contractName={storageLayouts.contractName}
+                    storageLayout={storageLayouts.storageLayout}
                     id={storageLayouts.id}
                   />
                 ))}

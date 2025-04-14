@@ -6,7 +6,7 @@ interface SolcBinData {
   releases: Record<string, string>;
 }
 
-export default async function handler(request: Request): Promise<Response> {
+export default async function handler(): Promise<Response> {
   try {
     const url =
       "https://raw.githubusercontent.com/ethereum/solc-bin/gh-pages/bin/list.json";
@@ -33,7 +33,8 @@ export default async function handler(request: Request): Promise<Response> {
       },
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     return new Response(JSON.stringify({ message: errorMessage }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

@@ -17,12 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+// import { makeNamespacedInput } from "@openzeppelin/upgrades-core";
 
- import type {
-   SolcInput,
-   SolcOutput,
- } from "@openzeppelin/upgrades-core";
+import type { SolcInput, SolcOutput } from "@openzeppelin/upgrades-core";
 import type { ChangeEvent, DragEvent, Dispatch, SetStateAction } from "react";
+import type { StorageLayout } from "@openzeppelin/upgrades-core";
 
 interface UploadWizardButtonProps {
   setParentDialogOpen?: Dispatch<SetStateAction<boolean>>;
@@ -66,7 +65,10 @@ export default function UploadWizardButton({
     Record<string, string>
   >({});
   const [compilerVersion, setCompilerVersion] = useState<string>("");
-  const [compilerOutput, setCompilerOutput] = useState<SolcOutput | null>(null);
+  const [solcOutput, setSolcOutput] = useState<SolcOutput | undefined>(
+    undefined
+  );
+  const [solcInput, setSolcInput] = useState<SolcInput | undefined>(undefined);
   const [compiledContracts, setCompiledContracts] = useState<
     Record<string, string>
   >({});
@@ -75,6 +77,8 @@ export default function UploadWizardButton({
   const [selectedContract, setSelectedContract] = useState<string | undefined>(
     undefined
   );
+  const [storageLayoutLoadingError, setStorageLayoutLoadingError] =
+    useState<string>("");
 
   // Function to reset wizard state when the dialog is closed.
   function resetWizardState() {
@@ -82,13 +86,14 @@ export default function UploadWizardButton({
     setIsDragging(false);
     setSelectedFiles([]);
     setCompilerVersion("");
-    setCompilerOutput(null);
+    setSolcOutput(undefined);
     setCompiledContracts({});
     setSelectedContract(undefined);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   }
+  // TODO Clean all state, remember this when namespaced layouts will be added
 
   // Handler for dialog open state change.
   const handleDialogOpenChange = (open: boolean) => {
@@ -165,16 +170,18 @@ export default function UploadWizardButton({
     }
 
     // Create solcInput object
-    const solcInput: SolcInput = { sources: sources };
+    const _solcInput: SolcInput = { sources: sources };
     // @ts-ignore
-    solcInput.language = "Solidity";
-    solcInput.settings = {
+    _solcInput.language = "Solidity";
+    _solcInput.settings = {
       outputSelection: {
         "*": {
           "*": ["*"],
+          "": ["ast"],
         },
       },
     };
+    setSolcInput(_solcInput);
 
     // Initialize compiler worker
     const worker = new Worker("/dynSolcWorkerBundle.js");
@@ -182,7 +189,7 @@ export default function UploadWizardButton({
       "message",
       (msg) => {
         const solcOutput: SolcOutput = JSON.parse(msg.data.solcOutput);
-        setCompilerOutput(solcOutput);
+        setSolcOutput(solcOutput);
 
         if (solcOutput.errors) {
           setWizardStep(WizardStep.COMPILATION_ERROR);
@@ -202,39 +209,85 @@ export default function UploadWizardButton({
       false
     );
     worker.postMessage({
-      solcInput: JSON.stringify(solcInput),
+      solcInput: JSON.stringify(_solcInput),
       solcBin: compilerVersions[compilerVersion],
     });
   }
 
   // Load storage layout function
-  function handleLoadStorageLayout() {
+  async function handleLoadStorageLayout() {
     setWizardStep(WizardStep.LOADING);
+    if (!selectedContract || !solcInput || !solcOutput) return;
 
-    // Load Storage layout
+    // Extract storage layout
+    var storageLayout: StorageLayout | undefined = undefined;
+
+    // TODO implement this to make the analysis in the frontend instead of the backend ???
+    // TODO Compile namespaces context in the frontend
+    try {
+      const response = await fetch("/api/extract_storage_layout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          solcInput: solcInput,
+          solcOutput: solcOutput,
+          sourceName: compiledContracts[selectedContract],
+          contractName: selectedContract,
+        }),
+      });
+      const json = await response.json();
+      storageLayout = json.storageLayout;
+    } catch (error) {
+      setStorageLayoutLoadingError("Error loading storage layout" + error);
+      setWizardStep(WizardStep.LOADING_ERROR);
+      return;
+    }
+
+    // ONLY ROOT STORAGE LAYOUT BUT NO BACKEND REQUIRED
+    //let storageLayout =
+    //  solcOutput?.contracts[compiledContracts[selectedContract]][
+    //    selectedContract
+    //  ].storageLayout;
+
+    // TODO Try to delete this check
+    if (!storageLayout) {
+      setWizardStep(WizardStep.LOADING_ERROR);
+      setStorageLayoutLoadingError("Storage layout extraction failed");
+      return;
+    }
+
+    // Set storage layouts
     setStorageLayouts((prevLayouts) => {
       if (triggerVisualizerId !== undefined) {
         const newLayouts = [
           ...prevLayouts.slice(0, triggerVisualizerId + 1),
           {
-            contractName: selectedContract || "",
+            contractName: `${compiledContracts[selectedContract].replace(
+              ".sol",
+              ""
+            )}:${selectedContract}`,
             id: 0,
+            storageLayout: storageLayout!,
           },
           ...prevLayouts.slice(triggerVisualizerId + 1),
         ];
         for (let i = 0; i < newLayouts.length; i++) {
           newLayouts[i].id = i;
         }
-        console.log(newLayouts);
         return newLayouts;
       }
       return [
         {
-          contractName: selectedContract || "",
+          contractName: `${compiledContracts[selectedContract].replace(
+            ".sol",
+            ""
+          )}:${selectedContract}`,
           id: 0,
+          storageLayout: storageLayout!,
         },
       ];
     });
+
     // Close dialog
     setDialogOpen(false);
     // Close parent dialog if exist
@@ -400,9 +453,9 @@ export default function UploadWizardButton({
               id="upload-dialog-description"
               className="text-green-800"
             >
-              {compilerOutput && compilerOutput.errors && (
+              {solcOutput && solcOutput.errors && (
                 <>
-                  {compilerOutput.errors.map((error, index) => (
+                  {solcOutput.errors.map((error, index) => (
                     <span key={index} className="text-red-500">
                       {error.formattedMessage}
                     </span>
@@ -448,13 +501,16 @@ export default function UploadWizardButton({
                 avoidCollisions={false}
                 className="bg-black border-green-500 text-green-500 max overflow-y-auto"
               >
-                {Object.keys(compiledContracts).map((version) => (
+                {Object.keys(compiledContracts).map((contract) => (
                   <SelectItem
                     className="focus:bg-green-700 focus:border focus:border-green-950"
-                    key={version}
-                    value={version}
+                    key={contract}
+                    value={contract}
                   >
-                    {version}
+                    {`${compiledContracts[contract].replace(
+                      ".sol",
+                      ""
+                    )}:${contract}`}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -487,6 +543,26 @@ export default function UploadWizardButton({
           </DialogHeader>
           <div className="flex items-center justify-center">
             <Loader2 className="animate-spin h-20 w-20 text-green-500 my-8" />
+          </div>
+        </DialogContent>
+      )}
+
+      {/* Wizard Step 5: Storage Layout Loading error */}
+      {wizardStep === WizardStep.LOADING_ERROR && (
+        <DialogContent className="bg-black border-green-500 p-6 rounded-md">
+          <DialogHeader>
+            <DialogTitle className="text-green-500">
+              Errors storage layout loading
+            </DialogTitle>
+            <DialogDescription
+              id="upload-dialog-description"
+              className="text-green-800"
+            >
+              <span className="text-red-500">{storageLayoutLoadingError}</span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-center">
+            <FileX className="h-20 w-20 text-green-500 my-8" />
           </div>
         </DialogContent>
       )}
