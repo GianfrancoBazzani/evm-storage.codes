@@ -1,11 +1,18 @@
-import {
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+
+const {
   solcInputOutputDecoder,
   extractStorageLayout,
-} from "@openzeppelin/upgrades-core";
+} = require("@openzeppelin/upgrades-core");
+
+const {
+  isNodeType,
+  findAll,
+  astDereferencer,
+} = require("solidity-ast/utils.js");
 
 import type { ContractDefinition } from "solidity-ast";
-import { isNodeType, findAll, astDereferencer } from "solidity-ast/utils.js";
-
 import type {
   SolcInput,
   SolcOutput,
