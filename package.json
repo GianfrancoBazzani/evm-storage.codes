@@ -7,7 +7,7 @@
     "dev": "vite",
     "vercel dev": "yarn run vercel dev",
     "build": "tsc -b && vite build",
-    "bundle-solc-worker": "npx browserify -t babelify src/lib/dyn-solc-worker.js > public/dyn-solc-worker-bundle.js ",
+    "bundle-solc-worker": "npx browserify -t babelify src/lib/dynSolcWorker.js > public/dynSolcWorkerBundle.js ",
     "lint": "eslint .",
     "preview": "vite preview"
   },

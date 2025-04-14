@@ -177,7 +177,7 @@ export default function UploadWizardButton({
     };
 
     // Initialize compiler worker
-    const worker = new Worker("/dyn-solc-worker-bundle.js");
+    const worker = new Worker("/dynSolcWorkerBundle.js");
     worker.addEventListener(
       "message",
       (msg) => {
