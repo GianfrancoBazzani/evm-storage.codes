@@ -3,27 +3,13 @@ import {
   extractStorageLayout,
 } from "@openzeppelin/upgrades-core";
 
-import type {
-  ContractDefinition,
-  FunctionDefinition,
-  StructDefinition,
-  TypeName,
-  UserDefinedTypeName,
-  VariableDeclaration,
-} from "solidity-ast";
-import {
-  isNodeType,
-  findAll,
-  ASTDereferencer,
-  astDereferencer,
-} from "solidity-ast/utils.js";
+import type { ContractDefinition } from "solidity-ast";
+import { isNodeType, findAll, astDereferencer } from "solidity-ast/utils.js";
 
 import type {
   SolcInput,
   SolcOutput,
-  SrcDecoder,
   StorageLayout,
-  isNamespaceSupported,
 } from "@openzeppelin/upgrades-core";
 
 interface ExtractStorageLayoutRequestBody {
@@ -88,7 +74,7 @@ export async function POST(request: Request): Promise<Response> {
   }
 }
 
-function getNamespacedCompilationContext( 
+function getNamespacedCompilationContext(
   source: string,
   contractDef: ContractDefinition,
   namespacedOutput?: SolcOutput
