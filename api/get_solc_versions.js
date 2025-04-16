@@ -2,11 +2,7 @@ export const config = {
   runtime: "edge",
 };
 
-interface SolcBinData {
-  releases: Record<string, string>;
-}
-
-export default async function handler(): Promise<Response> {
+export default async function handler() {
   try {
     const url =
       "https://raw.githubusercontent.com/ethereum/solc-bin/gh-pages/bin/list.json";
@@ -23,7 +19,7 @@ export default async function handler(): Promise<Response> {
         }
       );
 
-    const data: SolcBinData = await fetchResponse.json();
+    const data = await fetchResponse.json();
 
     return new Response(JSON.stringify({ solc_versions: data.releases }), {
       status: 200,

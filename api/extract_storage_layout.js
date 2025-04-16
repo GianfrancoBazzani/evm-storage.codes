@@ -1,35 +1,15 @@
 import { createRequire } from "module";
-const require = createRequire(import.meta.url);
-
-const {
+import {
   solcInputOutputDecoder,
   extractStorageLayout,
-} = require("@openzeppelin/upgrades-core");
-
-const {
-  isNodeType,
-  findAll,
-  astDereferencer,
-} = require("solidity-ast/utils.js");
-
-import type { ContractDefinition } from "solidity-ast";
-import type {
-  SolcInput,
-  SolcOutput,
-  StorageLayout,
 } from "@openzeppelin/upgrades-core";
 
-interface ExtractStorageLayoutRequestBody {
-  solcInput: SolcInput;
-  solcOutput: SolcOutput;
-  sourceName: string;
-  contractName: string;
-}
+import { isNodeType, findAll, astDereferencer } from "solidity-ast/utils.js";
 
-export async function POST(request: Request): Promise<Response> {
+export async function POST(request) {
   try {
     const { solcInput, solcOutput, sourceName, contractName } =
-      (await request.json()) as ExtractStorageLayoutRequestBody;
+      await request.json();
 
     // Build decodeSrc function
     const decodeSrc = solcInputOutputDecoder(solcInput, solcOutput);
@@ -39,7 +19,7 @@ export async function POST(request: Request): Promise<Response> {
       findAll("ContractDefinition", solcOutput.sources[sourceName].ast)
     );
     const contractDef = contractDefinitions.find(
-      (_contractDef: ContractDefinition) => _contractDef.name === contractName
+      (_contractDef) => _contractDef.name === contractName
     );
     if (!contractDef) {
       return new Response(
@@ -55,12 +35,12 @@ export async function POST(request: Request): Promise<Response> {
     // TODO
 
     // Extract the storage layout
-    const storageLayout: StorageLayout = extractStorageLayout(
+    const storageLayout = extractStorageLayout(
       contractDef,
       decodeSrc,
       deref,
       solcOutput.contracts[sourceName][contractDef.name].storageLayout,
-      undefined //getNamespacedCompilationContext(sourceName, contractDef, namespacedOutput) // TODO  Add namespaces support try to compile namespacedOutput in the frontend
+      undefined //getNamespacedCompilationContext(sourceName, contractDef, namespacedOutput)
     );
 
     return new Response(JSON.stringify({ storageLayout }), {
@@ -82,9 +62,9 @@ export async function POST(request: Request): Promise<Response> {
 }
 
 function getNamespacedCompilationContext(
-  source: string,
-  contractDef: ContractDefinition,
-  namespacedOutput?: SolcOutput
+  source,
+  contractDef,
+  namespacedOutput
 ) {
   if (
     namespacedOutput === undefined ||
