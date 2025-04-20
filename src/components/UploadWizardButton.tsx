@@ -70,9 +70,6 @@ export default function UploadWizardButton({
   const [solcOutput, setSolcOutput] = useState<SolcOutput | undefined>(
     undefined
   );
-  const [namespacedInput, setNamespacedInput] = useState<SolcInput | undefined>(
-    undefined
-  );
   const [namespacedOutput, setNamespacedOutput] = useState<
     SolcOutput | undefined
   >(undefined);
@@ -239,7 +236,6 @@ export default function UploadWizardButton({
       });
       const json = await response.json();
       const _namespacedInput = json.namespacedInput;
-      setNamespacedInput(_namespacedInput);
 
       //  Compile contract using compiler worker
       const worker = new Worker("/dynSolcWorkerBundle.js");

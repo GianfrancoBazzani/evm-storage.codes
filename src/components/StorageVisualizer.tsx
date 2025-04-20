@@ -1,5 +1,5 @@
 import { useContext, useState } from "react";
-import { Code, Copy, X, GitCompareArrows, Cross, Key } from "lucide-react"; // changed from "@lucide/astro" to the React version
+import { Code, Copy, X, GitCompareArrows, Cross } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,7 +18,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import UploadWizardButton from "@/components/UploadWizardButton";
-import AnalyzeWizardButton from "@/components/AnalyzeWizardButton";
+// import AnalyzeWizardButton from "@/components/AnalyzeWizardButton";
 import ColorHash from "color-hash";
 
 import type { StorageLayout, StorageItem } from "@openzeppelin/upgrades-core";
@@ -267,10 +267,11 @@ export default function StorageVisualizer({
                   setParentDialogOpen={setAddContractDialogOpen}
                   triggerVisualizerId={id}
                 />
+                {/* TODO Implement 
                 <AnalyzeWizardButton
                 //setParent={handleChildDialogClose} TODO: fix
                 //triggerVisualizerId={id}
-                />
+                />*/}
               </div>
             </DialogContent>
           </Dialog>

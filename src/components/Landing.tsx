@@ -1,6 +1,6 @@
 import { Github, Coffee} from "lucide-react";
 import UploadWizardButton from "@/components/UploadWizardButton";
-import AnalyzeWizardButton from "@/components/AnalyzeWizardButton";
+//import AnalyzeWizardButton from "@/components/AnalyzeWizardButton";
 
 export default function Landing() {
   // ASCII art for the title
@@ -32,8 +32,9 @@ export default function Landing() {
         <span>Analyze and compare EVM smart contracts storage layouts.</span>
         <div className="mt-6 mb-6 flex flex-row justify-center gap-4">
           <UploadWizardButton />
+          {/* TODO Implement
           <AnalyzeWizardButton />
-          {/* TODO: Add option to upload json */}
+        */}
         </div>
       </div>
 
