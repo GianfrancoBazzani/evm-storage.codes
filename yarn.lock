@@ -1663,11 +1663,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@openzeppelin/upgrades-core@npm:^1.43.0":
-  version: 1.43.0
-  resolution: "@openzeppelin/upgrades-core@npm:1.43.0"
+"@openzeppelin/upgrades-core@npm:^1.44.0":
+  version: 1.44.0
+  resolution: "@openzeppelin/upgrades-core@npm:1.44.0"
   dependencies:
     "@nomicfoundation/slang": "npm:^0.18.3"
+    bignumber.js: "npm:^9.1.2"
     cbor: "npm:^10.0.0"
     chalk: "npm:^4.1.0"
     compare-versions: "npm:^6.0.0"
@@ -1676,10 +1677,10 @@ __metadata:
     minimatch: "npm:^9.0.5"
     minimist: "npm:^1.2.7"
     proper-lockfile: "npm:^4.1.1"
-    solidity-ast: "npm:^0.4.51"
+    solidity-ast: "npm:^0.4.60"
   bin:
     openzeppelin-upgrades-core: dist/cli/cli.js
-  checksum: 7f2332a58703257d106dc374bd77b3842aa8b9c979a78a2a9f97bc7d36ddd99fb7f1d854d12535d5dfd47ebcf76f451e13d0a1cb6a2db55652d7d43207ed030e
+  checksum: 587734f6cfe12f352c2d79b52579314c7d4cc7854668801467414a12200203d2481e078ffe5213fe676fc99677ff0ba31a4e3027332f27d1598ddbfed58fe50b
   languageName: node
   linkType: hard
 
@@ -3494,6 +3495,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"bignumber.js@npm:^9.1.2":
+  version: 9.3.0
+  resolution: "bignumber.js@npm:9.3.0"
+  checksum: f54a79cd6fc98552ac0510c1cd9381650870ae443bdb20ba9b98e3548188d941506ac3c22a9f9c69b2cc60da9be5700e87d3f54d2825310a8b2ae999dfd6d99d
+  languageName: node
+  linkType: hard
+
 "bindings@npm:^1.4.0":
   version: 1.5.0
   resolution: "bindings@npm:1.5.0"
@@ -4995,7 +5003,7 @@ __metadata:
     "@babel/preset-env": "npm:^7.26.9"
     "@eslint/js": "npm:^9.21.0"
     "@fontsource-variable/pixelify-sans": "npm:^5.2.5"
-    "@openzeppelin/upgrades-core": "npm:^1.43.0"
+    "@openzeppelin/upgrades-core": "npm:^1.44.0"
     "@radix-ui/react-dialog": "npm:^1.1.6"
     "@radix-ui/react-select": "npm:^2.1.6"
     "@radix-ui/react-slot": "npm:^1.1.2"
@@ -7693,7 +7701,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"solidity-ast@npm:^0.4.51":
+"solidity-ast@npm:^0.4.60":
   version: 0.4.60
   resolution: "solidity-ast@npm:0.4.60"
   checksum: 941475435e7da7696b1e8cbbc42c515f21ba614dd2fe8b5f7c180b0e3de4acb24361b57925cfa112d273a4763986a7efd092f2123e83fd198f2e1eff31d10538

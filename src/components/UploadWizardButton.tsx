@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-// import { makeNamespacedInput } from "@openzeppelin/upgrades-core";
+import * as versions from "compare-versions";
 
 import type { SolcInput, SolcOutput } from "@openzeppelin/upgrades-core";
 import type { ChangeEvent, DragEvent, Dispatch, SetStateAction } from "react";
@@ -46,6 +46,7 @@ export default function UploadWizardButton({
   enum WizardStep {
     SELECT_COMPILER,
     COMPILING,
+    COMPILING_NAMESPACED,
     COMPILATION_ERROR,
     SELECT_CONTRACT,
     LOADING,
@@ -65,10 +66,16 @@ export default function UploadWizardButton({
     Record<string, string>
   >({});
   const [compilerVersion, setCompilerVersion] = useState<string>("");
+  const [solcInput, setSolcInput] = useState<SolcInput | undefined>(undefined);
   const [solcOutput, setSolcOutput] = useState<SolcOutput | undefined>(
     undefined
   );
-  const [solcInput, setSolcInput] = useState<SolcInput | undefined>(undefined);
+  const [namespacedInput, setNamespacedInput] = useState<SolcInput | undefined>(
+    undefined
+  );
+  const [namespacedOutput, setNamespacedOutput] = useState<
+    SolcOutput | undefined
+  >(undefined);
   const [compiledContracts, setCompiledContracts] = useState<
     Record<string, string>
   >({});
@@ -183,26 +190,30 @@ export default function UploadWizardButton({
     };
     setSolcInput(_solcInput);
 
-    // Initialize compiler worker
+    // Compile contracts using compiler worker
     const worker = new Worker("/dynSolcWorkerBundle.js");
     worker.addEventListener(
       "message",
       (msg) => {
-        const solcOutput: SolcOutput = JSON.parse(msg.data.solcOutput);
-        setSolcOutput(solcOutput);
+        const _solcOutput: SolcOutput = JSON.parse(msg.data.solcOutput);
+        setSolcOutput(_solcOutput);
 
-        if (solcOutput.errors) {
+        if (_solcOutput.errors) {
           setWizardStep(WizardStep.COMPILATION_ERROR);
         } else {
-          for (const source of Object.keys(solcOutput.contracts)) {
-            for (const contract of Object.keys(solcOutput.contracts[source])) {
+          for (const source of Object.keys(_solcOutput.contracts)) {
+            for (const contract of Object.keys(_solcOutput.contracts[source])) {
               setCompiledContracts((prevContracts) => ({
                 ...prevContracts,
                 [contract]: source,
               }));
             }
           }
-          setWizardStep(WizardStep.SELECT_CONTRACT);
+          if (versions.compare(compilerVersion, "0.8.20", ">=")) {
+            setWizardStep(WizardStep.COMPILING_NAMESPACED);
+          } else {
+            setWizardStep(WizardStep.SELECT_CONTRACT);
+          }
         }
         worker.terminate();
       },
@@ -214,6 +225,57 @@ export default function UploadWizardButton({
     });
   }
 
+  // Compile Namespaces useEffect
+  async function compileNamespaces() {
+    try {
+      const response = await fetch("/api/get_namespaced_input", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          solcInput: solcInput,
+          solcOutput: solcOutput,
+          compilerVersion: compilerVersion,
+        }),
+      });
+      const json = await response.json();
+      const _namespacedInput = json.namespacedInput;
+      setNamespacedInput(_namespacedInput);
+
+      //  Compile contract using compiler worker
+      const worker = new Worker("/dynSolcWorkerBundle.js");
+      worker.addEventListener(
+        "message",
+        (msg) => {
+          const _namespacedOutput: SolcOutput = JSON.parse(msg.data.solcOutput);
+          setNamespacedOutput(_namespacedOutput);
+          if (_namespacedOutput.errors) {
+            setWizardStep(WizardStep.COMPILATION_ERROR);
+          } else {
+            setWizardStep(WizardStep.SELECT_CONTRACT);
+          }
+          worker.terminate();
+        },
+        false
+      );
+      worker.postMessage({
+        solcInput: JSON.stringify(_namespacedInput),
+        solcBin: compilerVersions[compilerVersion],
+      });
+    } catch (error) {
+      console.error("Error compiling namespaces" + error);
+      setWizardStep(WizardStep.COMPILATION_ERROR);
+      return;
+    }
+  }
+  useEffect(() => {
+    if (
+      wizardStep === WizardStep.COMPILING_NAMESPACED &&
+      solcOutput !== undefined
+    ) {
+      compileNamespaces();
+    }
+  }, [wizardStep]);
+
   // Load storage layout function
   async function handleLoadStorageLayout() {
     setWizardStep(WizardStep.LOADING);
@@ -222,8 +284,7 @@ export default function UploadWizardButton({
     // Extract storage layout
     var storageLayout: StorageLayout | undefined = undefined;
 
-    // TODO implement this to make the analysis in the frontend instead of the backend ???
-    // TODO Compile namespaces context in the frontend
+    // Extract storage layout using backend
     try {
       const response = await fetch("/api/extract_storage_layout", {
         method: "POST",
@@ -231,6 +292,7 @@ export default function UploadWizardButton({
         body: JSON.stringify({
           solcInput: solcInput,
           solcOutput: solcOutput,
+          namespacedOutput: namespacedOutput,
           sourceName: compiledContracts[selectedContract],
           contractName: selectedContract,
         }),
@@ -240,19 +302,6 @@ export default function UploadWizardButton({
     } catch (error) {
       setStorageLayoutLoadingError("Error loading storage layout" + error);
       setWizardStep(WizardStep.LOADING_ERROR);
-      return;
-    }
-
-    // ONLY ROOT STORAGE LAYOUT BUT NO BACKEND REQUIRED
-    //let storageLayout =
-    //  solcOutput?.contracts[compiledContracts[selectedContract]][
-    //    selectedContract
-    //  ].storageLayout;
-
-    // TODO Try to delete this check
-    if (!storageLayout) {
-      setWizardStep(WizardStep.LOADING_ERROR);
-      setStorageLayoutLoadingError("Storage layout extraction failed");
       return;
     }
 
@@ -442,7 +491,28 @@ export default function UploadWizardButton({
         </DialogContent>
       )}
 
-      {/* Wizard Step 3: Compilation Errors */}
+      {/* Wizard Step 3: Compilation Namespaces Spinner */}
+      {wizardStep === WizardStep.COMPILING_NAMESPACED && (
+        <DialogContent className="bg-black border-green-500 p-6 rounded-md">
+          <DialogHeader>
+            <DialogTitle className="text-green-500">
+              Compiling ERC-7201 namespaces
+            </DialogTitle>
+            <DialogDescription
+              id="upload-dialog-description"
+              className="text-green-800"
+            >
+              Selected Compiler version allows ERC-7201 namespaces. Please wait
+              while your contract's namespaces are being compiled.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-center">
+            <Loader2 className="animate-spin h-20 w-20 text-green-500 my-8" />
+          </div>
+        </DialogContent>
+      )}
+
+      {/* Wizard Step 4: Compilation Errors */}
       {wizardStep === WizardStep.COMPILATION_ERROR && (
         <DialogContent className="bg-black border-green-500 p-6 rounded-md">
           <DialogHeader>
@@ -470,7 +540,7 @@ export default function UploadWizardButton({
         </DialogContent>
       )}
 
-      {/* Wizard Step 4: Contract Selection */}
+      {/* Wizard Step 5: Contract Selection */}
       {wizardStep === WizardStep.SELECT_CONTRACT && (
         <DialogContent className="bg-black border-green-500 p-6 rounded-md">
           <DialogHeader>
@@ -526,7 +596,7 @@ export default function UploadWizardButton({
         </DialogContent>
       )}
 
-      {/* Wizard Step 5: Loading Spinner */}
+      {/* Wizard Step 6: Loading Spinner */}
       {wizardStep === WizardStep.LOADING && (
         <DialogContent className="bg-black border-green-500 p-6 rounded-md">
           <DialogHeader>
@@ -547,7 +617,7 @@ export default function UploadWizardButton({
         </DialogContent>
       )}
 
-      {/* Wizard Step 5: Storage Layout Loading error */}
+      {/* Wizard Step 7: Storage Layout Loading error */}
       {wizardStep === WizardStep.LOADING_ERROR && (
         <DialogContent className="bg-black border-green-500 p-6 rounded-md">
           <DialogHeader>

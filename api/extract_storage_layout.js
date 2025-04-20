@@ -1,15 +1,19 @@
-import { createRequire } from "module";
 import {
   solcInputOutputDecoder,
   extractStorageLayout,
 } from "@openzeppelin/upgrades-core";
 
-import { isNodeType, findAll, astDereferencer } from "solidity-ast/utils.js";
+import { findAll, astDereferencer, isNodeType } from "solidity-ast/utils.js";
 
 export async function POST(request) {
   try {
-    const { solcInput, solcOutput, sourceName, contractName } =
-      await request.json();
+    const {
+      solcInput,
+      solcOutput,
+      namespacedOutput,
+      sourceName,
+      contractName,
+    } = await request.json();
 
     // Build decodeSrc function
     const decodeSrc = solcInputOutputDecoder(solcInput, solcOutput);
@@ -31,16 +35,13 @@ export async function POST(request) {
     // Build ast dereferencer
     const deref = astDereferencer(solcOutput);
 
-    // Get Namespaced Output
-    // TODO
-
     // Extract the storage layout
     const storageLayout = extractStorageLayout(
       contractDef,
       decodeSrc,
       deref,
       solcOutput.contracts[sourceName][contractDef.name].storageLayout,
-      undefined //getNamespacedCompilationContext(sourceName, contractDef, namespacedOutput)
+      getNamespacedCompilationContext(sourceName, contractDef, namespacedOutput)
     );
 
     return new Response(JSON.stringify({ storageLayout }), {

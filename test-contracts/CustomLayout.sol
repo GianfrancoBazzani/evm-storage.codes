@@ -75,6 +75,7 @@ contract CustomLayout_Unsupported_Node_Type layout at 0x2 ** 0x3 {
 }
 
 contract Namespaced_Custom_Layout_Unaffected layout at 0x1 {
+    uint256 public x;
     /// @custom:storage-location erc7201:example.main
     struct MainStorage {
         uint256 x;
