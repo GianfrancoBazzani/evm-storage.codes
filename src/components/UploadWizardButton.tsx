@@ -310,10 +310,7 @@ export default function UploadWizardButton({
         const newLayouts = [
           ...prevLayouts.slice(0, triggerVisualizerId + 1),
           {
-            contractName: `${compiledContracts[selectedContract].replace(
-              ".sol",
-              ""
-            )}:${selectedContract}`,
+            contractName: selectedContract,
             id: 0,
             storageLayout: storageLayout!,
           },
@@ -326,10 +323,7 @@ export default function UploadWizardButton({
       }
       return [
         {
-          contractName: `${compiledContracts[selectedContract].replace(
-            ".sol",
-            ""
-          )}:${selectedContract}`,
+          contractName: selectedContract,
           id: 0,
           storageLayout: storageLayout!,
         },
@@ -554,7 +548,7 @@ export default function UploadWizardButton({
               contract to load storage layout.
             </DialogDescription>
           </DialogHeader>
-          <div>
+          <div className="overflow-hidden">
             <label className="block text-green-500 mb-2">
               Compiled contracts
             </label>
@@ -568,7 +562,7 @@ export default function UploadWizardButton({
               <SelectContent
                 side="bottom"
                 avoidCollisions={false}
-                className="bg-black border-green-500 text-green-500 max overflow-y-auto"
+                className="bg-black border-green-500 text-green-500"
               >
                 {Object.keys(compiledContracts).map((contract) => (
                   <SelectItem
@@ -576,10 +570,7 @@ export default function UploadWizardButton({
                     key={contract}
                     value={contract}
                   >
-                    {`${compiledContracts[contract].replace(
-                      ".sol",
-                      ""
-                    )}:${contract}`}
+                    {contract}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -187,8 +187,8 @@ export default function StorageVisualizer({
   return (
     <Card className="bg-black border-green-500 mb-6 overflow-hidden relative py-0 gap-0 h-full w-full transition-all duration-500 ease-in-out">
       {/* Upper Bar */}
-      <div className="flex justify-between items-center p-2 border-b border-green-500/50 bg-green-900/20">
-        <div className="flex items-center gap-2">
+      <div className="flex max-w-full justify-between items-center p-2 border-b border-green-500/50 bg-green-900/20">
+        <div className="flex max-w-full truncate items-center gap-2">
           <Code className="text-green-500 h-4 w-4" />
           <span className="text-green-500 text-sm font-bold">
             {contractName}
