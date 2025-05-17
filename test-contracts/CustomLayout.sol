@@ -177,3 +177,8 @@ contract Gap_Changed_Root_Ok layout at 25 {
     uint256[25] __gap;
     uint256 public x;
 }
+
+contract Gap_Changed_Root_Ok_Test_Ultra_Mega_Long_Contract_Name_Long_Long_Long layout at 25 {
+    uint256[25] __gap;
+    uint256 public x;
+}

@@ -310,10 +310,7 @@ export default function UploadWizardButton({
         const newLayouts = [
           ...prevLayouts.slice(0, triggerVisualizerId + 1),
           {
-            contractName: `${compiledContracts[selectedContract].replace(
-              ".sol",
-              ""
-            )}:${selectedContract}`,
+            contractName: `${selectedContract}`,
             id: 0,
             storageLayout: storageLayout!,
           },
@@ -326,10 +323,7 @@ export default function UploadWizardButton({
       }
       return [
         {
-          contractName: `${compiledContracts[selectedContract].replace(
-            ".sol",
-            ""
-          )}:${selectedContract}`,
+          contractName: `${selectedContract}`,
           id: 0,
           storageLayout: storageLayout!,
         },
@@ -576,10 +570,7 @@ export default function UploadWizardButton({
                     key={contract}
                     value={contract}
                   >
-                    {`${compiledContracts[contract].replace(
-                      ".sol",
-                      ""
-                    )}:${contract}`}
+                    {`${contract}`}
                   </SelectItem>
                 ))}
               </SelectContent>
