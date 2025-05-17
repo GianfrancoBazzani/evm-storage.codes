@@ -293,6 +293,9 @@ export default function UploadWizardButton({
           contractName: selectedContract,
         }),
       });
+      if (!response.ok) {
+        throw new Error((await response.json()).message);
+      }
       const json = await response.json();
       storageLayout = json.storageLayout;
     } catch (error) {
