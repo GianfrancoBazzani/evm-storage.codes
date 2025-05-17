@@ -83,72 +83,74 @@ export default function StorageVisualizer({
       idToColor[`${item.contract}:${item.label}`] = colorHash.hex(item.label);
     });
 
-    // Set maxSlot
-    let maxSlot = Number(
-      storageItems
-        .map((storageItem) => storageItem.slot)
-        .reduce((previousValue, currentValue) =>
-          Number(previousValue) >= Number(currentValue)
-            ? previousValue
-            : currentValue
-        )
-    );
-    // Extend max Slot if there is an overflow in the "last" slot
-    let lastSlotTypeNumberOfBytes = Number(
-      storageLayout?.types[storageItems.slice(-1)[0].type].numberOfBytes
-    );
-    if (lastSlotTypeNumberOfBytes > 32) {
-      maxSlot += Math.ceil(lastSlotTypeNumberOfBytes / 32) - 1;
-    }
-
-    // Build slots array
+    let maxSlot = 0;
     let slots: Array<Array<ItemWrapper>> = [];
-    // build slots array
-    let overflowBytes = 0;
-    for (let i = 0; i <= maxSlot; i++) {
-      let slotItems = storageItems.filter((item) => Number(item.slot) === i);
-      // if previous slot is overflown
-      if (overflowBytes > 0) {
-        slotItems?.unshift(slots[i - 1].slice(-1)[0].item);
-      }
-      // compute bytes used by storage objects in the slot it can overflow
-      let bytesUsed = overflowBytes;
-      slotItems?.forEach(
-        (item) =>
-          (bytesUsed += Number(storageLayout?.types[item.type].numberOfBytes))
+    if (storageItems.length > 0) {
+      // Set maxSlot
+      maxSlot = Number(
+        storageItems
+          .map((storageItem) => storageItem.slot)
+          .reduce((previousValue, currentValue) =>
+            Number(previousValue) >= Number(currentValue)
+              ? previousValue
+              : currentValue
+          )
       );
-      // Wrap slot Items
-      let slotItemsWrapped: ItemWrapper[] = slotItems
-        ? slotItems?.map((item, index) => {
-            let width: Number = Number(
-              storageLayout?.types[item.type].numberOfBytes
-            );
-            if (index === 0 && overflowBytes > 0) {
-              if (overflowBytes >= 32) {
-                width = 32;
-              } else {
-                width = overflowBytes;
-              }
-            }
-            Number(width) > 32 ? (width = 32) : width;
-            let wrappedItem: ItemWrapper = {
-              item: item,
-              color: idToColor[`${item.contract}:${item.label}`],
-              width: Number(width) * 3.125, // 100%/32Bytes = 3.125
-              offset: Number(item.offset) * 3.125, // 100%/32Bytes = 3.125
-            };
-            return wrappedItem;
-          })
-        : [];
-      // Set next overflow value
-      if (overflowBytes >= 32) {
-        overflowBytes -= 32;
-      } else if (bytesUsed >= 32) {
-        overflowBytes = bytesUsed - 32;
-      } else {
-        overflowBytes = 0;
+      // Extend max Slot if there is an overflow in the "last" slot
+      let lastSlotTypeNumberOfBytes = Number(
+        storageLayout?.types[storageItems.slice(-1)[0].type].numberOfBytes
+      );
+      if (lastSlotTypeNumberOfBytes > 32) {
+        maxSlot += Math.ceil(lastSlotTypeNumberOfBytes / 32) - 1;
       }
-      slots.push(slotItemsWrapped);
+
+      // Build slots array
+      let overflowBytes = 0;
+      for (let i = 0; i <= maxSlot; i++) {
+        let slotItems = storageItems.filter((item) => Number(item.slot) === i);
+        // if previous slot is overflown
+        if (overflowBytes > 0) {
+          slotItems?.unshift(slots[i - 1].slice(-1)[0].item);
+        }
+        // compute bytes used by storage objects in the slot it can overflow
+        let bytesUsed = overflowBytes;
+        slotItems?.forEach(
+          (item) =>
+            (bytesUsed += Number(storageLayout?.types[item.type].numberOfBytes))
+        );
+        // Wrap slot Items
+        let slotItemsWrapped: ItemWrapper[] = slotItems
+          ? slotItems?.map((item, index) => {
+              let width: Number = Number(
+                storageLayout?.types[item.type].numberOfBytes
+              );
+              if (index === 0 && overflowBytes > 0) {
+                if (overflowBytes >= 32) {
+                  width = 32;
+                } else {
+                  width = overflowBytes;
+                }
+              }
+              Number(width) > 32 ? (width = 32) : width;
+              let wrappedItem: ItemWrapper = {
+                item: item,
+                color: idToColor[`${item.contract}:${item.label}`],
+                width: Number(width) * 3.125, // 100%/32Bytes = 3.125
+                offset: Number(item.offset) * 3.125, // 100%/32Bytes = 3.125
+              };
+              return wrappedItem;
+            })
+          : [];
+        // Set next overflow value
+        if (overflowBytes >= 32) {
+          overflowBytes -= 32;
+        } else if (bytesUsed >= 32) {
+          overflowBytes = bytesUsed - 32;
+        } else {
+          overflowBytes = 0;
+        }
+        slots.push(slotItemsWrapped);
+      }
     }
     return {
       slots: slots,
@@ -165,7 +167,7 @@ export default function StorageVisualizer({
       storageLayout,
       "Root layout",
       BigInt(0)
-    ) // TODO add custom storage layout root
+    ) // TODO add custom storage layout root address
   );
 
   // ERC-7201 namespaces
@@ -181,11 +183,6 @@ export default function StorageVisualizer({
       );
     });
   }
-
-  // TODO transient layout
-
-  console.log(storageLayouts);
-  console.log("storageLayout:", storageLayout);
 
   return (
     <Card className="bg-black border-green-500 mb-6 overflow-hidden relative py-0 gap-0 h-full w-full transition-all duration-500 ease-in-out">

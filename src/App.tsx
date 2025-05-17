@@ -34,12 +34,12 @@ function App() {
             <div className="flex-grow bg-black text-green-500 px-4">
               <Header />
               <div className="flex flex-col md:flex-row gap-3">
-                {storageLayouts.map((storageLayouts, index) => (
+                {storageLayouts.map((storageLayout, index) => (
                   <StorageVisualizer
                     key={index}
-                    contractName={storageLayouts.contractName}
-                    storageLayout={storageLayouts.storageLayout}
-                    id={storageLayouts.id}
+                    contractName={storageLayout.contractName}
+                    storageLayout={storageLayout.storageLayout}
+                    id={storageLayout.id}
                   />
                 ))}
               </div>
