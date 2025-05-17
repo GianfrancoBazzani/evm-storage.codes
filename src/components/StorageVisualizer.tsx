@@ -20,8 +20,13 @@ import {
 import UploadWizardButton from "@/components/UploadWizardButton";
 // import AnalyzeWizardButton from "@/components/AnalyzeWizardButton";
 import ColorHash from "color-hash";
+import { normalizeUint256Literal } from "@/lib/integer-literals";
+import { erc7201 } from "@/lib/erc7201";
 
 import type { StorageLayout, StorageItem } from "@openzeppelin/upgrades-core";
+
+const SLOT_ZERO =
+  "0x0000000000000000000000000000000000000000000000000000000000000000";
 
 export interface StorageVisualizerProps {
   contractName: string;
@@ -67,15 +72,28 @@ export default function StorageVisualizer({
   interface StorageLayoutWrapper {
     slots: ItemWrapper[][];
     name: string;
-    root: BigInt;
+    baseSlot: string;
   }
 
   function getStorageLayoutWrapper(
     storageItems: StorageItem[],
     storageLayout: StorageLayout,
     name: string = "",
-    root: BigInt = BigInt(0)
+    baseSlot: string,
+    isNamespace: boolean = false
   ): StorageLayoutWrapper {
+    // Normalize baseSlot if is custom
+    if (!isNamespace && baseSlot !== SLOT_ZERO) {
+      let storageItemsNormalized = JSON.parse(JSON.stringify(storageItems));
+      for (let i = 0; i < storageItemsNormalized.length; i++) {
+        storageItemsNormalized[i].slot = (
+          BigInt(normalizeUint256Literal(storageItemsNormalized[i].slot)) -
+          BigInt(baseSlot)
+        ).toString(16);
+      }
+      storageItems = storageItemsNormalized;
+    }
+
     // Build astIdToColor object
     const colorHash = new ColorHash();
     let idToColor: { [key: string]: string } = {};
@@ -155,19 +173,30 @@ export default function StorageVisualizer({
     return {
       slots: slots,
       name: name,
-      root: root,
+      baseSlot: baseSlot,
     };
   }
 
+  // Get root layout base slot
+  let baseSlotNormalized = SLOT_ZERO;
+
+  // Parse and set baseSlot if it is present and defined
+  if ("baseSlot" in storageLayout && storageLayout.baseSlot) {
+    baseSlotNormalized = normalizeUint256Literal(storageLayout.baseSlot);
+  }
+
+  // Build storage layouts array for the visualizer
   let storageLayouts: StorageLayoutWrapper[] = [];
+
   // Root layout
   storageLayouts.push(
     getStorageLayoutWrapper(
       storageLayout.storage,
       storageLayout,
       "Root layout",
-      BigInt(0)
-    ) // TODO add custom storage layout root address
+      baseSlotNormalized,
+      false
+    )
   );
 
   // ERC-7201 namespaces
@@ -178,7 +207,8 @@ export default function StorageVisualizer({
           storageLayout.namespaces![namespaceName],
           storageLayout,
           namespaceName,
-          BigInt(0)
+          erc7201(namespaceName.split(":")[1]),
+          true
         )
       );
     });
@@ -311,12 +341,16 @@ export default function StorageVisualizer({
         {/*Content */}
         {storageLayouts.map((layout, index) => (
           <TabsContent value={layout.name} className="mt-0">
+            <div className="px-4 pb-2 text-green-500 text-[11px]">
+              base slot: {layout.baseSlot}
+            </div>
             <div
               key={index}
-              className="p-4 overflow-x-auto text-green-500 text-sm leading-relaxed"
+              className=" px-4 pb-4 overflow-x-auto text-green-500 text-sm leading-relaxed"
             >
               {layout.slots.map((slot, index) => (
-                <>
+                <div className=" flex flex-row my-0.5 ">
+                  <div className="w-4 text-[11px]">{index}</div>
                   <div key={index} className=" h-[1.2rem] w-full relative ">
                     {slot.map((item, index) => (
                       <div key={index} className=" flex flex-col">
@@ -343,7 +377,7 @@ export default function StorageVisualizer({
                     ))}
                   </div>
                   <div className="h-[2px]" />
-                </>
+                </div>
               ))}
             </div>
           </TabsContent>

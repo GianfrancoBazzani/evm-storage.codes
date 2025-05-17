@@ -87,6 +87,17 @@ contract Namespaced_Custom_Layout_Unaffected layout at 0x1 {
         0x183a6125c38840424c4a85fa12bab2ab606c4b6d0e7cc73c0c06ba5300eab500;
 }
 
+contract Namespaced_Custom_Layout_No_Clash layout at 0x183a6125c38840424c4a85fa12bab2ab606c4b6d0e7cc73c0c06ba5300eab500 {
+    uint256 noClashesWithNamespacea;
+    uint256 noClashesWithNamespaceb;
+    uint256 noClashesWithNamespacec;
+}
+contract Namespaced_Custom_Layout_No_Clash_Decimal layout at 10958655983261152271848436692291137275443024275653522991983264966744321209600 {
+    uint256 noClashesWithNamespacea;
+    uint256 noClashesWithNamespaceb;
+    uint256 noClashesWithNamespacec;
+}
+
 contract Namespaced_Custom_Layout_Clash layout at 0x183a6125c38840424c4a85fa12bab2ab606c4b6d0e7cc73c0c06ba5300eab500 {
     /// @custom:storage-location erc7201:example.main
     struct MainStorage {
