@@ -1,5 +1,5 @@
 import { useContext, useState } from "react";
-import { Code, Copy, X, GitCompareArrows, Cross } from "lucide-react";
+import { Code, Copy, X, GitCompareArrows, Cross, TriangleAlert } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -353,6 +353,14 @@ export default function StorageVisualizer({
             <div className="px-4 pb-2 text-green-500 text-[11px]">
               base slot: {layout.baseSlot}
             </div>
+            {layout.slots.length === 0 && (
+              <div className="flex items-center justify-center gap-2 px-4 pb-2 my-5 text-green-500">
+                <TriangleAlert className="h-4 w-4" />
+                <span className="text-center">
+                  {layout.name} has no storage items defined.
+                </span>
+              </div>
+            )}
             <div
               key={index}
               className=" px-4 pb-4 overflow-x-auto text-green-500 text-sm leading-relaxed"
