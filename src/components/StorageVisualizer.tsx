@@ -350,7 +350,7 @@ export default function StorageVisualizer({
             >
               {layout.slots.map((slot, index) => (
                 <div className=" flex flex-row my-0.5 ">
-                  <div className="w-4 text-[11px]">{index}</div>
+                  <div className="w-5 text-[11px]">{index}</div>
                   <div key={index} className=" h-[1.2rem] w-full relative ">
                     {slot.map((item, index) => (
                       <div key={index} className=" flex flex-col">
