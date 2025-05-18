@@ -1,6 +1,7 @@
 import { keccak256 } from "viem";
 import { Buffer } from "buffer";
 
+// The formula identified by erc7201 is defined as erc7201(id: string) = keccak256(keccak256(id) - 1) & ~0xff.
 export function erc7201(id: string): `0x${string}` {
   const hash1 = keccak256(Buffer.from(id, "utf8"));
   const v1 = BigInt(hash1) - 1n;
