@@ -517,18 +517,25 @@ export default function UploadWizardButton({
               className="text-green-800"
             >
               {solcOutput && solcOutput.errors && (
-                <>
+                <div className="max-h-60 overflow-y-auto
+                                 minimal-h-scrollbar-green
+          [&::-webkit-scrollbar]:h-1.5
+          [&::-webkit-scrollbar-track]:bg-transparent
+          [&::-webkit-scrollbar-thumb]:bg-green-500
+          hover:[&::-webkit-scrollbar-thumb]:bg-green-600 
+          [&::-webkit-scrollbar-thumb]:rounded-sm
+                ">
                   {solcOutput.errors.map((error, index) => (
-                    <span key={index} className="text-red-500">
+                    <span key={index} className="block text-red-500">
                       {error.formattedMessage}
                     </span>
                   ))}
-                </>
+                </div>
               )}
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-center">
-            <FileX className="h-20 w-20 text-green-500 my-8" />
+            <FileX className="h-15 w-15 text-green-500 my-4" />
           </div>
         </DialogContent>
       )}
@@ -622,7 +629,7 @@ export default function UploadWizardButton({
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-center">
-            <FileX className="h-20 w-20 text-green-500 my-8" />
+            <FileX className="h-15 w-15 text-green-500 my-4" />
           </div>
         </DialogContent>
       )}
