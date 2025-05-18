@@ -322,8 +322,17 @@ export default function StorageVisualizer({
 
       {/* Tabs*/}
       <Tabs defaultValue="Root layout" className="w-full">
-        <div className="border-b border-green-500/30 bg-green-900/10">
-          <TabsList className="bg-transparent h-9 flex items-center">
+        <div
+          className="border-b border-green-500/30 bg-green-900/10 overflow-x-auto
+                  minimal-h-scrollbar-green
+          [&::-webkit-scrollbar]:h-1.5
+          [&::-webkit-scrollbar-track]:bg-transparent
+          [&::-webkit-scrollbar-thumb]:bg-green-500
+          hover:[&::-webkit-scrollbar-thumb]:bg-green-600 
+          [&::-webkit-scrollbar-thumb]:rounded-sm
+        "
+        >
+          <TabsList className="bg-transparent h-9 flex items-center whitespace-nowrap">
             {storageLayouts.map((layout) => (
               <>
                 <TabsTrigger
