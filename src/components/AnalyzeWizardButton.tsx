@@ -1,6 +1,12 @@
-import { useContext, useState, useRef, useEffect } from "react";
+import { useContext, useState , useEffect } from "react";
 import { StorageLayoutsContext } from "../App";
-import { Upload, X, File as FileIcon, Loader2, FileX } from "lucide-react";
+import {
+  Upload,
+  Loader2,
+  FileX,
+  ChevronsUpDown,
+  Check,
+} from "lucide-react";
 import {
   Dialog,
   DialogTrigger,
@@ -17,21 +23,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import * as versions from "compare-versions";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from "@/components/ui/command";
+
+import { cn } from "@/lib/utils";
 
 import type { SolcInput, SolcOutput } from "@openzeppelin/upgrades-core";
-import type { ChangeEvent, DragEvent, Dispatch, SetStateAction } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import type { StorageLayout } from "@openzeppelin/upgrades-core";
 
-interface UploadWizardButtonProps {
+interface AnalyzeWizardButtonProps {
   setParentDialogOpen?: Dispatch<SetStateAction<boolean>>;
   triggerVisualizerId?: number;
 }
 
-export default function UploadWizardButton({
+export default function AnalyzeWizardButton({
   setParentDialogOpen = undefined,
   triggerVisualizerId = undefined,
-}: UploadWizardButtonProps) {
+}: AnalyzeWizardButtonProps) {
   // Global context
   const storageLayoutsContext = useContext(StorageLayoutsContext);
   if (!storageLayoutsContext) {
@@ -44,7 +64,7 @@ export default function UploadWizardButton({
 
   // Wizard step
   enum WizardStep {
-    SELECT_COMPILER,
+    SELECT_ADDRESS,
     COMPILING,
     COMPILING_NAMESPACED,
     COMPILATION_ERROR,
@@ -53,20 +73,52 @@ export default function UploadWizardButton({
     LOADING_ERROR,
   }
   const [wizardStep, setWizardStep] = useState<WizardStep>(
-    WizardStep.SELECT_COMPILER
+    WizardStep.SELECT_ADDRESS
   );
 
-  // Files management - allow multiple files
-  const [isDragging, setIsDragging] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Chains management
+  interface Chain {
+    name: string;
+    chainId: number;
+    rpc: string[];
+    traceSupportedRPCs: string[];
+    supported: boolean;
+    etherscanAPI: string;
+  }
+
+  // Chain management
+  const [chains, setChains] = useState<Array<Chain>>([]);
+  const [chainsPopoverOpen, setChainsPopoverOpen] = useState<boolean>(false);
+  const [chainName, setChainName] = useState<string | undefined>();
+
+  const handleChainSelect = (newChain: string) => {
+    setChainName(newChain);
+    setChainsPopoverOpen(false);
+  };
+
+  // Fetch chains useEffect
+  async function fetchChains() {
+    try {
+      fetch("https://sourcify.dev/server/chains")
+        .then((res) => res.json())
+        .then((arr) => {
+          setChains(arr);
+        });
+    } catch (error) {
+      console.error("Error fetching compilers:", error);
+    }
+  }
+  useEffect(() => {
+    fetchChains();
+  }, []);
+
+  // Address management
+  // TODO: add data validation with zod
+  //const [address, setAddress] = useState<string>("");
 
   // Compiler management
-  const [compilerVersions, setCompilerVersions] = useState<
-    Record<string, string>
-  >({});
-  const [compilerVersion, setCompilerVersion] = useState<string>("");
   const [solcInput, setSolcInput] = useState<SolcInput | undefined>(undefined);
+  setSolcInput // TODO Delete
   const [solcOutput, setSolcOutput] = useState<SolcOutput | undefined>(
     undefined
   );
@@ -85,19 +137,13 @@ export default function UploadWizardButton({
     useState<string>("");
 
   // Function to reset wizard state when the dialog is closed.
+  // TODO Add new state variables
   function resetWizardState() {
-    setWizardStep(WizardStep.SELECT_COMPILER);
-    setIsDragging(false);
-    setSelectedFiles([]);
-    setCompilerVersion("");
+    setWizardStep(WizardStep.SELECT_ADDRESS);
     setSolcOutput(undefined);
     setCompiledContracts({});
     setSelectedContract(undefined);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
   }
-  // TODO Clean all state, remember this when namespaced layouts will be added
 
   // Handler for dialog open state change.
   const handleDialogOpenChange = (open: boolean) => {
@@ -107,120 +153,7 @@ export default function UploadWizardButton({
     }
   };
 
-  // Fetch compiler version useEffect
-  async function fetchCompilerVersions() {
-    try {
-      const response = await fetch("/api/get_solc_versions");
-      const json = await response.json();
-      setCompilerVersions(json.solc_versions);
-    } catch (error) {
-      console.error("Error fetching compilers:", error);
-    }
-  }
-  useEffect(() => {
-    fetchCompilerVersions();
-  }, []);
-
-  // File handling functions
-  function handleDragOver(e: DragEvent<HTMLDivElement>) {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  }
-
-  function handleDragLeave(e: DragEvent<HTMLDivElement>) {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  }
-
-  function handleDrop(e: DragEvent<HTMLDivElement>) {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      setSelectedFiles(Array.from(e.dataTransfer.files));
-    }
-  }
-
-  function handleFileInputChange(e: ChangeEvent<HTMLInputElement>) {
-    if (e.target.files && e.target.files.length > 0) {
-      setSelectedFiles(Array.from(e.target.files));
-    }
-  }
-
-  function triggerFileInput() {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  }
-
-  function removeFile(fileToRemove: File) {
-    setSelectedFiles((prevFiles) =>
-      prevFiles.filter((file) => file !== fileToRemove)
-    );
-  }
-
-  // Compile function
-  async function handleCompile() {
-    setWizardStep(WizardStep.COMPILING);
-
-    // Read source files
-    const sources: Record<string, { content: string }> = {};
-    for (const file of selectedFiles) {
-      const fileContent = await file.text();
-      sources[file.name] = { content: fileContent };
-    }
-
-    // Create solcInput object
-    const _solcInput: SolcInput = { sources: sources };
-    // @ts-ignore
-    _solcInput.language = "Solidity";
-    _solcInput.settings = {
-      outputSelection: {
-        "*": {
-          "*": ["*"],
-          "": ["ast"],
-        },
-      },
-    };
-    setSolcInput(_solcInput);
-
-    // Compile contracts using compiler worker
-    const worker = new Worker("/dynSolcWorkerBundle.js");
-    worker.addEventListener(
-      "message",
-      (msg) => {
-        const _solcOutput: SolcOutput = JSON.parse(msg.data.solcOutput);
-        setSolcOutput(_solcOutput);
-
-        if (_solcOutput.errors) {
-          setWizardStep(WizardStep.COMPILATION_ERROR);
-        } else {
-          for (const source of Object.keys(_solcOutput.contracts)) {
-            for (const contract of Object.keys(_solcOutput.contracts[source])) {
-              setCompiledContracts((prevContracts) => ({
-                ...prevContracts,
-                [contract]: source,
-              }));
-            }
-          }
-          if (versions.compare(compilerVersion, "0.8.20", ">=")) {
-            setWizardStep(WizardStep.COMPILING_NAMESPACED);
-          } else {
-            setWizardStep(WizardStep.SELECT_CONTRACT);
-          }
-        }
-        worker.terminate();
-      },
-      false
-    );
-    worker.postMessage({
-      solcInput: JSON.stringify(_solcInput),
-      solcBin: compilerVersions[compilerVersion],
-    });
-  }
+  // TODO Add fetch address compilation artifacts or code
 
   // Compile Namespaces useEffect
   async function compileNamespaces() {
@@ -231,7 +164,7 @@ export default function UploadWizardButton({
         body: JSON.stringify({
           solcInput: solcInput,
           solcOutput: solcOutput,
-          compilerVersion: compilerVersion,
+          compilerVersion: "compilerVersion", // TODO Get compiler version from Sourcify
         }),
       });
       const json = await response.json();
@@ -255,7 +188,7 @@ export default function UploadWizardButton({
       );
       worker.postMessage({
         solcInput: JSON.stringify(_namespacedInput),
-        solcBin: compilerVersions[compilerVersion],
+        solcBin: "compilerVersions[compilerVersion]", // TODO Get compiler version from Sourcify
       });
     } catch (error) {
       console.error("Error compiling namespaces" + error);
@@ -345,120 +278,95 @@ export default function UploadWizardButton({
           className="bg-green-900/30 text-green-500 border border-green-500 hover:bg-green-600/40 hover:text-green-300 transition-all duration-300 px-8 py-6 text-lg animate-pulse"
           onClick={() => setDialogOpen(true)}
         >
-          <Upload className="mr-2 h-4 w-4" /> UPLOAD SOURCES
+          <Upload className="mr-2 h-4 w-4" /> ANALYZE ADDRESS
         </Button>
       </DialogTrigger>
 
-      {/* Wizard Step 1: Upload Sources */}
-      {wizardStep === WizardStep.SELECT_COMPILER && (
+      {/* Wizard Step 1: Select Network and Address */}
+      {wizardStep === WizardStep.SELECT_ADDRESS && (
         <DialogContent className="bg-black border-green-500 p-6 rounded-md">
           <DialogHeader>
             <DialogTitle className="text-green-500">
-              Upload And Compile Contracts
+              Fetch Smart Contract Code
             </DialogTitle>
             <DialogDescription
               id="upload-dialog-description"
-              className=" text-green-800"
+              className="text-green-800"
             >
-              Upload one or more Solidity source files. They will be compiled
-              together.
+              Select the network and enter the smart contract address to
+              retrieve its code from the blockchain.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-4">
-            {/* File upload area */}
-            <div
-              className={`w-full max-w-lg mb-8 border-2 ${
-                isDragging
-                  ? "border-green-500 bg-green-900/20"
-                  : "border-green-500/50 bg-black"
-              } rounded-md p-6 text-center cursor-pointer transition-all duration-300`}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              onClick={triggerFileInput}
-            >
-              <input
-                type="file"
-                multiple
-                ref={fileInputRef}
-                className="hidden"
-                onChange={handleFileInputChange}
-                accept=".sol"
-              />
-
-              {selectedFiles.length > 0 ? (
-                <div className="space-y-2">
-                  {selectedFiles.map((file, index) => (
-                    <div
-                      className="flex items-center justify-between"
-                      key={index}
-                    >
-                      <div className="flex items-center">
-                        <FileIcon className="h-6 w-6 mr-2 text-green-500" />
-                        <span className="text-green-500 truncate max-w-[250px]">
-                          {file.name}
-                        </span>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeFile(file);
-                        }}
-                        className="text-green-500 hover:text-green-300"
-                      >
-                        <X className="h-5 w-5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center">
-                  <Upload className="h-10 w-10 mb-2 text-green-500" />
-                  <p className="text-green-500 mb-1">UPLOAD CONTRACT FILES</p>
-                  <p className="text-green-500/70 text-sm">
-                    Drag and drop or click to browse
-                  </p>
-                  <p className="text-green-500/50 text-xs mt-2">
-                    .sol files supported
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-green-500 mb-2">
-                Solidity Compiler Version
-              </label>
-              <Select
-                onValueChange={setCompilerVersion}
-                value={compilerVersion}
-              >
-                <SelectTrigger className="w-full text-green-500 border-green-500 data-[placeholder]:text-green-500/50 cursor-pointer">
-                  <SelectValue placeholder="Select Version" />
-                </SelectTrigger>
-                <SelectContent
-                  side="bottom"
-                  avoidCollisions={false}
-                  className="bg-black border-green-500 text-green-500 max overflow-y-auto"
+            <label className="block text-green-500 mb-2">Network</label>
+            {/**Chain Search popover  TODO STYLIZE PROPERLY CAUTION IN DEV THE MOUSE IS NOT WORKING*/}
+            <Popover open={chainsPopoverOpen} onOpenChange={setChainsPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={chainsPopoverOpen}
+                  className="w-full justify-between bg-black text-green-500/50 border border-green-500 hover:bg-black hover:text-green-500/50 rounded-md"
                 >
-                  {Object.keys(compilerVersions).map((version) => (
-                    <SelectItem
-                      className="focus:bg-green-700 focus:border focus:border-green-950"
-                      key={version}
-                      value={version}
-                    >
-                      {version}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                  {chainName
+                    ? `${
+                        chains.find((_chain) => _chain.name === chainName)
+                          ?.name
+                      } (Chain Id: ${
+                        chains.find((_chain) => _chain.name === chainName)
+                          ?.chainId
+                      })`
+                    : "Search network..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-full p-2 bg-black border border-green-500 rounded-md">
+                <Command>
+                  <CommandInput
+                    placeholder="Search network..."
+                    className="p-2 text-green-500 focus:outline-none focus:border-green-700"
+                  />
+                  <CommandList className="w-full bg-black text-green-500">
+                    <CommandEmpty className="bg-black text-green-500 p-2">
+                      No network found.
+                    </CommandEmpty>
+                    <CommandGroup className="w-full bg-black text-green-500">
+                      {chains.map((_chain) => (
+                        <CommandItem
+                          key={_chain.chainId}
+                          value={_chain.name}
+                          onSelect={handleChainSelect}
+                          className="bg-black text-green-500 hover:bg-green-600/40 focus:bg-green-700 focus:border focus:border-green-950 px-2 py-1"
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              chains.find((_chain) => _chain.name === chainName)
+                                ?.name === _chain.name
+                                ? "opacity-100"
+                                : "opacity-0"
+                            )}
+                          />
+                          <span className="truncate">{`${_chain.name} (Chain Id: ${_chain.chainId})`}</span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            <label className="block text-green-500 mb-2">Address</label>
+            <input
+              type="text"
+              placeholder="Enter contract address"
+              className="w-full p-2 border border-green-500 bg-black text-green-500 rounded-md focus:outline-none focus:border-green-700"
+            />
             <Button
-              onClick={handleCompile}
-              disabled={selectedFiles.length === 0 || !compilerVersion}
+              //onClick={handleCompile}
+              //disabled={selectedFiles.length === 0 || !compilerVersion}
               className="bg-green-900/30 text-green-500 border border-green-500 hover:bg-green-600/40 hover:text-green-300 transition-all duration-300 px-8 py-6 text-lg w-full"
             >
-              Compile Sources
+              Fetch Contract Code
             </Button>
           </div>
         </DialogContent>
@@ -517,14 +425,16 @@ export default function UploadWizardButton({
               className="text-green-800"
             >
               {solcOutput && solcOutput.errors && (
-                <div className="max-h-60 overflow-y-auto
+                <div
+                  className="max-h-60 overflow-y-auto
                                  minimal-h-scrollbar-green
           [&::-webkit-scrollbar]:h-1.5
           [&::-webkit-scrollbar-track]:bg-transparent
           [&::-webkit-scrollbar-thumb]:bg-green-500
           hover:[&::-webkit-scrollbar-thumb]:bg-green-600 
           [&::-webkit-scrollbar-thumb]:rounded-sm
-                ">
+                "
+                >
                   {solcOutput.errors.map((error, index) => (
                     <span key={index} className="block text-red-500">
                       {error.formattedMessage}

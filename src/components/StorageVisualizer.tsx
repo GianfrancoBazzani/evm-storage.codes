@@ -25,7 +25,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import UploadWizardButton from "@/components/UploadWizardButton";
-// import AnalyzeWizardButton from "@/components/AnalyzeWizardButton";
+import AnalyzeWizardButton from "@/components/AnalyzeWizardButton";
 import ColorHash from "color-hash";
 import { normalizeUint256Literal } from "@/lib/integer-literals";
 import { erc7201 } from "@/lib/erc7201";
@@ -330,11 +330,10 @@ export default function StorageVisualizer({
                   setParentDialogOpen={setAddContractDialogOpen}
                   triggerVisualizerId={id}
                 />
-                {/* TODO Implement 
                 <AnalyzeWizardButton
-                //setParent={handleChildDialogClose} TODO: fix
-                //triggerVisualizerId={id}
-                />*/}
+                  setParentDialogOpen={setAddContractDialogOpen}
+                  triggerVisualizerId={id}
+                />
               </div>
             </DialogContent>
           </Dialog>
