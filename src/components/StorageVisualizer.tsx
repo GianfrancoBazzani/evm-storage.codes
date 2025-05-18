@@ -1,5 +1,12 @@
 import { useContext, useState } from "react";
-import { Code, Copy, X, GitCompareArrows, Cross, TriangleAlert } from "lucide-react";
+import {
+  Code,
+  Copy,
+  X,
+  GitCompareArrows,
+  Cross,
+  TriangleAlert,
+} from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -60,7 +67,35 @@ export default function StorageVisualizer({
     });
   }
 
-  // Storage visualizer state
+  // Helpers to manage pinnable tooltips, each tooltip stare is tracked in a key-value object where the key is LayoutName|TypeLabel|ItemLabel
+  const [pinnedTooltips, setPinnedTooltips] = useState<Record<string, boolean>>(
+    {}
+  );
+  const [visibleTooltips, setVisibleTooltips] = useState<
+    Record<string, boolean>
+  >({});
+
+  function handlePinTooltip(key: string) {
+    const willBePinned = !pinnedTooltips[key];
+    setPinnedTooltips((prev) => ({
+      ...prev,
+      [key]: willBePinned,
+    }));
+    if (willBePinned) {
+      setVisibleTooltips((prev) => ({
+        ...prev,
+        [key]: true,
+      }));
+    }
+  }
+
+  function handleOpenTooltip(key: string, openFromInteraction: boolean) {
+    setVisibleTooltips((prevVisible) => ({
+      ...prevVisible,
+      [key]: openFromInteraction,
+    }));
+  }
+
   // Interface for ItemWrapper to add additional visualization properties
   interface ItemWrapper {
     item: StorageItem;
@@ -75,6 +110,7 @@ export default function StorageVisualizer({
     baseSlot: string;
   }
 
+  // Function to analyze the storage layout and build the wrapper object ot be consumed by the visualizer
   function getStorageLayoutWrapper(
     storageItems: StorageItem[],
     storageLayout: StorageLayout,
@@ -371,8 +407,38 @@ export default function StorageVisualizer({
                   <div key={index} className=" h-[1.2rem] w-full relative ">
                     {slot.map((item, index) => (
                       <div key={index} className=" flex flex-col">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
+                        <Tooltip
+                          open={
+                            visibleTooltips[
+                              `${layout.name}|${
+                                storageLayout?.types[item.item.type].label
+                              }|${item.item.label}`
+                            ] ||
+                            pinnedTooltips[
+                              `${layout.name}|${
+                                storageLayout?.types[item.item.type].label
+                              }|${item.item.label}`
+                            ]
+                          }
+                          onOpenChange={(isOpen) =>
+                            handleOpenTooltip(
+                              `${layout.name}|${
+                                storageLayout?.types[item.item.type].label
+                              }|${item.item.label}`,
+                              isOpen
+                            )
+                          }
+                        >
+                          <TooltipTrigger
+                            asChild
+                            onClick={() => {
+                              handlePinTooltip(
+                                `${layout.name}|${
+                                  storageLayout?.types[item.item.type].label
+                                }|${item.item.label}`
+                              );
+                            }}
+                          >
                             <div
                               style={{
                                 width: `${item.width}%`,
