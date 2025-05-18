@@ -122,3 +122,10 @@
     @apply bg-background text-foreground;
   }
 }
+
+  /* Class used to customize scrollbar for Firefox */
+.minimal-h-scrollbar-green {
+  scrollbar-width: thin; /* Makes the scrollbar thin */
+  scrollbar-color: #22c55e transparent; /* Sets thumb color to green-500 and track to transparent */
+  /* #22c55e is the hex code for Tailwind's green-500 */
+}
