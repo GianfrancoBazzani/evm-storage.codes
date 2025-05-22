@@ -5558,6 +5558,7 @@ __metadata:
     vercel: "npm:^41.6.0"
     viem: "npm:^2.29.4"
     vite: "npm:^6.2.6"
+    zod: "npm:^3.25.17"
   languageName: unknown
   linkType: soft
 
@@ -9316,5 +9317,12 @@ __metadata:
   version: 0.1.0
   resolution: "yocto-queue@npm:0.1.0"
   checksum: dceb44c28578b31641e13695d200d34ec4ab3966a5729814d5445b194933c096b7ced71494ce53a0e8820685d1d010df8b2422e5bf2cdea7e469d97ffbea306f
+  languageName: node
+  linkType: hard
+
+"zod@npm:^3.25.17":
+  version: 3.25.17
+  resolution: "zod@npm:3.25.17"
+  checksum: c330707d3e11c6e9ff9ab08d03b38612f8e6ee64b3fc5df003bada1c194f60f5aaffd67d727c73935c8c5507190d5de7b97c52f49b4798cd920ff7cba1a9961c
   languageName: node
   linkType: hard

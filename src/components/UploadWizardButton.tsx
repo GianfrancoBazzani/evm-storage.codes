@@ -195,7 +195,12 @@ export default function UploadWizardButton({
         const _solcOutput: SolcOutput = JSON.parse(msg.data.solcOutput);
         setSolcOutput(_solcOutput);
 
-        if (_solcOutput.errors) {
+        if (
+          _solcOutput.errors &&
+          _solcOutput.errors.some(
+            (error: { severity: string }) => error.severity === "error"
+          )
+        ) {
           setWizardStep(WizardStep.COMPILATION_ERROR);
         } else {
           for (const source of Object.keys(_solcOutput.contracts)) {
@@ -244,7 +249,12 @@ export default function UploadWizardButton({
         (msg) => {
           const _namespacedOutput: SolcOutput = JSON.parse(msg.data.solcOutput);
           setNamespacedOutput(_namespacedOutput);
-          if (_namespacedOutput.errors) {
+          if (
+            _namespacedOutput.errors &&
+            _namespacedOutput.errors.some(
+              (error: { severity: string }) => error.severity === "error"
+            )
+          ) {
             setWizardStep(WizardStep.COMPILATION_ERROR);
           } else {
             setWizardStep(WizardStep.SELECT_CONTRACT);
@@ -517,14 +527,16 @@ export default function UploadWizardButton({
               className="text-green-800"
             >
               {solcOutput && solcOutput.errors && (
-                <div className="max-h-60 overflow-y-auto
+                <div
+                  className="max-h-60 overflow-y-auto
                                  minimal-h-scrollbar-green
           [&::-webkit-scrollbar]:h-1.5
           [&::-webkit-scrollbar-track]:bg-transparent
           [&::-webkit-scrollbar-thumb]:bg-green-500
           hover:[&::-webkit-scrollbar-thumb]:bg-green-600 
           [&::-webkit-scrollbar-thumb]:rounded-sm
-                ">
+                "
+                >
                   {solcOutput.errors.map((error, index) => (
                     <span key={index} className="block text-red-500">
                       {error.formattedMessage}
