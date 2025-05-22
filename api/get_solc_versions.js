@@ -5,7 +5,7 @@ export const config = {
 export default async function handler() {
   try {
     const url =
-      "https://raw.githubusercontent.com/ethereum/solc-bin/gh-pages/bin/list.json";
+      "https://raw.githubusercontent.com/ethereum/solc-bin/gh-pages/emscripten-wasm32/list.json";
     const fetchResponse = await fetch(url);
 
     if (!fetchResponse.ok)

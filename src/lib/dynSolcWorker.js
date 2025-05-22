@@ -7,7 +7,7 @@ self.onmessage = async (msg) => {
   // msg.data.solcInput: Raw JSON input for the compiler
   // Returns:
   // solcOutput: raw JSON output from the compiler
-  importScripts(`https://binaries.soliditylang.org/bin/${msg.data.solcBin}`);
+  importScripts(`https://binaries.soliditylang.org/emscripten-wasm32/${msg.data.solcBin}`);
   const compiler = wrapper(self.Module);
 
   self.postMessage({
