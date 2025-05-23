@@ -585,6 +585,15 @@ export default function AnalyzeWizardButton({
               className="text-green-800"
             >
               Please wait while your contract source files are being compiled.
+              {
+                //@ts-ignore
+                solcInput?.settings?.optimizer?.enabled && (
+                  <p className="mt-2">
+                    Compilation might take a while because the optimizer
+                    is enabled.
+                  </p>
+                )
+              }
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-center">
