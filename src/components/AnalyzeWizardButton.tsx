@@ -30,7 +30,13 @@ import {
   CommandGroup,
   CommandItem,
 } from "@/components/ui/command";
-import { z } from "zod";
+import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
+import { set, z } from "zod";
 import { cn } from "@/lib/utils";
 import * as versions from "compare-versions";
 
@@ -147,13 +153,18 @@ export default function AnalyzeWizardButton({
 
   // Verification status
   interface VerificationStatus {
-    match: boolean;
-    creationMatch: boolean;
-    runtimeMatch: boolean;
+    match: "match" | "exact_match" | null;
+    creationMatch: "match" | "exact_match" | null;
+    runtimeMatch: "match" | "exact_match" | null;
+    isExactMatch: boolean;
   }
-  const [verificationStatus, setVerificationStatus] = useState<
-    VerificationStatus | undefined
-  >(undefined);
+  const [verificationStatus, setVerificationStatus] =
+    useState<VerificationStatus>({
+      match: null,
+      creationMatch: null,
+      runtimeMatch: null,
+      isExactMatch: false,
+    });
 
   // Storage layout loader management
   const [selectedContract, setSelectedContract] = useState<string | undefined>(
@@ -166,14 +177,24 @@ export default function AnalyzeWizardButton({
     useState<string>("");
 
   // Function to reset wizard state when the dialog is closed.
-  // TODO Add new state variables state reset
   function resetWizardState() {
     setWizardStep(WizardStep.SELECT_ADDRESS);
-    setSolcOutput(undefined);
     setCompiledContracts({});
-    setSelectedContract(undefined);
     setChainsPopoverOpen(false);
     setChainName(undefined);
+    setAddress(undefined);
+    setCompilerBinary("");
+    setSolcInput(undefined);
+    setSolcOutput(undefined);
+    setNamespacedOutput(undefined);
+    setCompiledContracts({});
+    setVerificationStatus({
+      match: null,
+      creationMatch: null,
+      runtimeMatch: null,
+      isExactMatch: false,
+    });
+    setSelectedContract(undefined);
   }
 
   // Handler for dialog open state change.
@@ -224,14 +245,10 @@ export default function AnalyzeWizardButton({
       return;
     }
 
+    // Prepare compilation input
     const _compilerBinary = `solc-emscripten-wasm32-v${compilation.compilerVersion}.js`;
     const _solcInput: SolcInput = stdJsonInput;
     _solcInput.settings = _solcInput.settings || {};
-    // @ts-ignore
-    _solcInput.settings.optimizer = {
-      enabled: false,
-      runs: 0,
-    };
     _solcInput.settings.outputSelection = {
       "*": {
         "*": ["*"],
@@ -245,6 +262,8 @@ export default function AnalyzeWizardButton({
       match: _match,
       creationMatch: _creationMatch,
       runtimeMatch: _runtimeMatch,
+      isExactMatch:
+        _creationMatch === "exact_match" || _runtimeMatch === "exact_match",
     });
 
     // Compile contracts using compiler worker
@@ -453,7 +472,7 @@ export default function AnalyzeWizardButton({
                   variant="outline"
                   role="combobox"
                   aria-expanded={chainsPopoverOpen}
-                  className="w-full justify-between bg-black border border-green-500 hover:bg-black rounded-md"
+                  className="w-full h-10 justify-between text-base bg-black border border-green-500 hover:bg-black rounded-md p-2"
                 >
                   <span
                     className={
@@ -473,11 +492,11 @@ export default function AnalyzeWizardButton({
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-full p-2 bg-black border border-green-500 rounded-md">
+              <PopoverContent className="w-full p-2 text-base bg-black border border-green-500 rounded-md">
                 <Command>
                   <CommandInput
                     placeholder="Search network..."
-                    className=" p-2 focus:outline-none focus:border-green-700 !placeholder-green-500/50 text-green-500"
+                    className="p-2 focus:outline-none focus:border-green-700 !placeholder-green-500/50 text-green-500"
                   />
                   <CommandList className="w-[var(--radix-popover-trigger-width)] min-w-full bg-black text-green-500">
                     <CommandEmpty className="bg-black text-green-500 p-2">
@@ -525,7 +544,7 @@ export default function AnalyzeWizardButton({
             <Button
               onClick={handleFetchArtifactsAndCompile}
               disabled={!chainName || !address}
-              className="bg-green-900/30 text-green-500 border border-green-500 hover:bg-green-600/40 hover:text-green-300 transition-all duration-300 px-8 py-6 text-lg w-full "
+              className="bg-green-900/30 text-green-500 border border-green-500 hover:bg-green-600/40 hover:text-green-300 transition-all duration-300 px-8 py-6 text-lg w-full"
             >
               Fetch Contract Code
             </Button>
@@ -533,18 +552,19 @@ export default function AnalyzeWizardButton({
         </DialogContent>
       )}
 
-      {/* Wizard Step 2: Compilation Spinner */}
+      {/* Wizard Step 2: Fetching Spinner */}
       {wizardStep === WizardStep.FETCHING && (
         <DialogContent className="bg-black border-green-500 p-6 rounded-md">
           <DialogHeader>
             <DialogTitle className="text-green-500">
-              Compiling contracts
+              Fetching sources from Sourcify
             </DialogTitle>
             <DialogDescription
               id="upload-dialog-description"
               className="text-green-800"
             >
-              Please wait while your contract source files are being compiled.
+              Please wait while your contract source files are being fetched
+              from sourcify
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-center">
@@ -553,7 +573,7 @@ export default function AnalyzeWizardButton({
         </DialogContent>
       )}
 
-      {/* Wizard Step 2: Compilation Spinner */}
+      {/* Wizard Step 3: Compilation Spinner  TODO Add msg that detects if the  optimizer is enabled and make the user aware that could take a while*/}
       {wizardStep === WizardStep.COMPILING && (
         <DialogContent className="bg-black border-green-500 p-6 rounded-md">
           <DialogHeader>
@@ -573,7 +593,7 @@ export default function AnalyzeWizardButton({
         </DialogContent>
       )}
 
-      {/* Wizard Step 3: Compilation Namespaces Spinner */}
+      {/* Wizard Step 4: Compilation Namespaces Spinner */}
       {wizardStep === WizardStep.COMPILING_NAMESPACED && (
         <DialogContent className="bg-black border-green-500 p-6 rounded-md">
           <DialogHeader>
@@ -594,7 +614,7 @@ export default function AnalyzeWizardButton({
         </DialogContent>
       )}
 
-      {/* Wizard Step 4: Fetching from Sourcify Errors TODO fix comments step numeration*/}
+      {/* Wizard Step 5: Fetching from Sourcify Errors */}
       {wizardStep === WizardStep.FETCHING_ERROR && (
         <DialogContent className="bg-black border-green-500 p-6 rounded-md">
           <DialogHeader>
@@ -614,7 +634,7 @@ export default function AnalyzeWizardButton({
         </DialogContent>
       )}
 
-      {/* Wizard Step 4: Compilation Errors */}
+      {/* Wizard Step 6: Compilation Errors */}
       {wizardStep === WizardStep.COMPILATION_ERROR && (
         <DialogContent className="bg-black border-green-500 p-6 rounded-md">
           <DialogHeader>
@@ -651,7 +671,7 @@ export default function AnalyzeWizardButton({
         </DialogContent>
       )}
 
-      {/* Wizard Step 5: Contract Selection TODO ADD verification status*/}
+      {/* Wizard Step 7: Contract Selection with verification status tooltips */}
       {wizardStep === WizardStep.SELECT_CONTRACT && (
         <DialogContent className="bg-black border-green-500 p-6 rounded-md">
           <DialogHeader>
@@ -667,6 +687,63 @@ export default function AnalyzeWizardButton({
             </DialogDescription>
           </DialogHeader>
           <div className="overflow-hidden">
+            <div className="flex flex-col justify-between mb-2 ">
+              <label className="block text-green-500 mb-2 bg-red">
+                Sourcify Verification Status
+              </label>
+              <div className="flex items-center flex-row mb-2 gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge>
+                      {verificationStatus.isExactMatch
+                        ? "Exact Match"
+                        : "Match"}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-green-700 border-green-950 border text-black px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200 max-w-[350px]">
+                    {verificationStatus.isExactMatch
+                      ? "Exact match: The onchain and compiled bytecode match exactly, including the metadata hashes"
+                      : "Match: The onchain and compiled bytecode match, but metadata hashes differ or don't exist"}
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge
+                      variant={
+                        verificationStatus.runtimeMatch
+                          ? "default"
+                          : "destructive"
+                      }
+                    >
+                      Runtime Bytecode
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-green-700 border-green-950 border text-black px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200 max-w-[350px]">
+                    {verificationStatus.runtimeMatch
+                      ? "Contract matched with runtime bytecode"
+                      : "Contract not matched with runtime bytecode"}
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge
+                      variant={
+                        verificationStatus.creationMatch
+                          ? "default"
+                          : "destructive"
+                      }
+                    >
+                      Creation Bytecode
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-green-700 border-green-950 border text-black px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200 max-w-[350px]">
+                    {verificationStatus.creationMatch
+                      ? "Contract matched with creation bytecode"
+                      : "Contract not matched with creation bytecode"}
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            </div>
             <label className="block text-green-500 mb-2">
               Compiled contracts
             </label>
@@ -704,7 +781,7 @@ export default function AnalyzeWizardButton({
         </DialogContent>
       )}
 
-      {/* Wizard Step 6: Loading Spinner */}
+      {/* Wizard Step 8: Loading Spinner */}
       {wizardStep === WizardStep.LOADING && (
         <DialogContent className="bg-black border-green-500 p-6 rounded-md">
           <DialogHeader>
@@ -725,7 +802,7 @@ export default function AnalyzeWizardButton({
         </DialogContent>
       )}
 
-      {/* Wizard Step 7: Storage Layout Loading error */}
+      {/* Wizard Step 9: Storage Layout Loading error */}
       {wizardStep === WizardStep.LOADING_ERROR && (
         <DialogContent className="bg-black border-green-500 p-6 rounded-md">
           <DialogHeader>
