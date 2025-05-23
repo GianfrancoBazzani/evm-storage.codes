@@ -36,7 +36,7 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
-import { set, z } from "zod";
+import { z } from "zod";
 import { cn } from "@/lib/utils";
 import * as versions from "compare-versions";
 
@@ -589,8 +589,8 @@ export default function AnalyzeWizardButton({
                 //@ts-ignore
                 solcInput?.settings?.optimizer?.enabled && (
                   <p className="mt-2">
-                    Compilation might take a while because the optimizer
-                    is enabled.
+                    Compilation might take a while because the optimizer is
+                    enabled.
                   </p>
                 )
               }
