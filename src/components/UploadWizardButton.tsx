@@ -62,10 +62,28 @@ export default function UploadWizardButton({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Compiler management
+  const EVM_VERSIONS = [
+    "default",
+    "cancun",
+    "shanghai",
+    "paris",
+    "london",
+    "berlin",
+    "istanbul",
+    "petersburg",
+    "constantinople",
+  ];
   const [compilerVersions, setCompilerVersions] = useState<
     Record<string, string>
   >({});
   const [compilerVersion, setCompilerVersion] = useState<string>("");
+  const [advancedOptionsEnabled, setAdvancedOptionsEnabled] = useState<
+    boolean | undefined
+  >(undefined);
+  const [evmVersion, setEvmVersion] = useState<string | undefined>(undefined);
+  const [optimizationEnabled, setOptimizationEnabled] =
+    useState<boolean>(false);
+  const [numRuns, setNumRuns] = useState<number | undefined>(undefined);
   const [solcInput, setSolcInput] = useState<SolcInput | undefined>(undefined);
   const [solcOutput, setSolcOutput] = useState<SolcOutput | undefined>(
     undefined
@@ -90,9 +108,16 @@ export default function UploadWizardButton({
     setIsDragging(false);
     setSelectedFiles([]);
     setCompilerVersion("");
+    setAdvancedOptionsEnabled(false);
+    setEvmVersion(undefined);
+    setOptimizationEnabled(false);
+    setNumRuns(undefined);
+    setSolcInput(undefined);
     setSolcOutput(undefined);
+    setNamespacedOutput(undefined);
     setCompiledContracts({});
     setSelectedContract(undefined);
+    setStorageLayoutLoadingError("");
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -177,6 +202,7 @@ export default function UploadWizardButton({
     const _solcInput: SolcInput = { sources: sources };
     // @ts-ignore
     _solcInput.language = "Solidity";
+    // TODO Add advanced optimizer configuration
     _solcInput.settings = {
       outputSelection: {
         "*": {
@@ -185,7 +211,21 @@ export default function UploadWizardButton({
         },
       },
     };
+    if (advancedOptionsEnabled) {
+      if (evmVersion && evmVersion !== "default") {
+        //@ts-ignore
+        _solcInput.settings.evmVersion = evmVersion;
+      }
+      if (optimizationEnabled) {
+        //@ts-ignore
+        _solcInput.settings.optimizer = {
+          enabled: optimizationEnabled,
+          runs: numRuns,
+        };
+      }
+    }
     setSolcInput(_solcInput);
+    console.log(_solcInput);
 
     // Compile contracts using compiler worker
     const worker = new Worker("/dynSolcWorkerBundle.js");
@@ -463,6 +503,90 @@ export default function UploadWizardButton({
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Advanced Compiler Options */}
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={advancedOptionsEnabled}
+                onChange={(e) => setAdvancedOptionsEnabled(e.target.checked)}
+                id="advanced-options-checkbox"
+                className="h-4 w-4 not-checked:appearance-none rounded border border-green-500 accent-green-500"
+              />
+              <label
+                htmlFor="advanced-options-checkbox"
+                className="text-green-500"
+              >
+                Advanced Compiler Options
+              </label>
+            </div>
+
+            {advancedOptionsEnabled === true && (
+              <div className=" flex flex-col space-y-4 pl-6 border-l border-green-500">
+                <div>
+                  <label
+                    htmlFor="num-runs"
+                    className="block text-green-500 mb-1"
+                  >
+                    EVM Version
+                  </label>
+                  <Select onValueChange={setEvmVersion} value={evmVersion}>
+                    <SelectTrigger className="w-full text-green-500 border-green-500 data-[placeholder]:text-green-500/50 cursor-pointer">
+                      <SelectValue placeholder="Select Version" />
+                    </SelectTrigger>
+                    <SelectContent
+                      side="bottom"
+                      avoidCollisions={false}
+                      className="bg-black border-green-500 text-green-500 max overflow-y-auto"
+                    >
+                      {EVM_VERSIONS.map((version) => (
+                        <SelectItem
+                          className="focus:bg-green-700 focus:border focus:border-green-950"
+                          key={version}
+                          value={version}
+                        >
+                          {version}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-row gap-4">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={optimizationEnabled}
+                      onChange={(e) => setOptimizationEnabled(e.target.checked)}
+                      id="advanced-options-checkbox"
+                      className="h-4 w-4 not-checked:appearance-none rounded border border-green-500 accent-green-500"
+                    />
+                    <label
+                      htmlFor="advanced-options-checkbox"
+                      className="text-green-500"
+                    >
+                      Optimization
+                    </label>
+                  </div>
+                  <div className="flex flex-row items-center gap-2">
+                    <label htmlFor="num-runs" className="block text-green-500">
+                      Runs
+                    </label>
+                    <input
+                      type="number"
+                      id="num-runs"
+                      value={numRuns}
+                      onChange={(e) => setNumRuns(parseInt(e.target.value))}
+                      className="appearance-none w-full bg-black border border-green-500 text-green-500 px-3 py-2 rounded-md focus:outline-none focus:border-green-700"
+                      style={{
+                        WebkitAppearance: "none",
+                        MozAppearance: "textfield",
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             <Button
               onClick={handleCompile}
               disabled={selectedFiles.length === 0 || !compilerVersion}
