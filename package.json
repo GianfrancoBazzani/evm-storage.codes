@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "vercel dev": "yarn run vercel dev",
+    "vercel build": "yarn run vercel build",
     "build": "tsc -b && vite build",
     "bundle-solc-worker": "npx browserify -t babelify src/lib/dynSolcWorker.js > public/dynSolcWorkerBundle.js ",
     "lint": "eslint .",

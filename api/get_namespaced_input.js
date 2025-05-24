@@ -2,11 +2,29 @@ import {
   makeNamespacedInput,
   trySanitizeNatSpec,
 } from "@openzeppelin/upgrades-core";
+import {
+  brotliDecompressSync,
+  brotliCompressSync,
+  constants as zlibConstants,
+} from "zlib";
+
+const BROTLI_QUALITY = 9;
 
 export async function POST(request) {
   try {
-    const { solcInput, solcOutput, compilerVersion } = await request.json();
-    
+    // Get the request body as an ArrayBuffer
+    const requestBodyArrayBuffer = await request.arrayBuffer();
+    const requestBodyBuffer = Buffer.from(requestBodyArrayBuffer);
+
+    // Decompress and deconstruct the data
+    const decompressedData = brotliDecompressSync(requestBodyBuffer);
+    const decompressedDataString = decompressedData.toString("utf-8");
+    const decompressedDataJson = JSON.parse(decompressedDataString);
+    const solcInput = decompressedDataJson.solcInput;
+    const solcOutput = decompressedDataJson.solcOutput;
+    const compilerVersion = decompressedDataJson.compilerVersion;
+
+    // Generate namespaced Input
     let namespacedInput = makeNamespacedInput(
       solcInput,
       solcOutput,
@@ -17,11 +35,24 @@ export async function POST(request) {
       compilerVersion
     );
 
-    return new Response(JSON.stringify({ namespacedInput }), {
+    // Compress the namespaced input
+    const namespacedInputBuffer = Buffer.from(
+      JSON.stringify(namespacedInput),
+      "utf-8"
+    );
+    const compressedNamespacedInput = brotliCompressSync(
+      namespacedInputBuffer,
+      {
+        params: {
+          [zlibConstants.BROTLI_PARAM_QUALITY]: BROTLI_QUALITY,
+        },
+      }
+    );
+
+    return new Response(compressedNamespacedInput, {
       status: 200,
       headers: {
-        "Content-Type": "application/json",
-        "Cache-Control": "s-maxage=86400, stale-while-revalidate",
+        "Content-Type": "application/octets-stream",
       },
     });
   } catch (error) {

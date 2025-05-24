@@ -11,3 +11,4 @@ export const EVM_VERSIONS = [
   "petersburg",
   "constantinople",
 ];
+export const BROTLI_QUALITY = 9;

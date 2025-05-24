@@ -21,8 +21,10 @@ import {
   EVM_VERSIONS,
   MIN_COMPATIBLE_SOLC_VERSION,
   MIN_NAMESPACED_COMPATIBLE_SOLC_VERSION,
+  BROTLI_QUALITY,
 } from "@/lib/constants";
 import * as versions from "compare-versions";
+import brotliPromise from "brotli-wasm";
 
 import type { SolcInput, SolcOutput } from "@openzeppelin/upgrades-core";
 import type { ChangeEvent, DragEvent, Dispatch, SetStateAction } from "react";
@@ -276,17 +278,42 @@ export default function UploadWizardButton({
   // Compile Namespaces useEffect
   async function compileNamespaces() {
     try {
-      const response = await fetch("/api/get_namespaced_input", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      // To avoid FUNCTION_PAYLOAD_TOO_LARGE compress the  data using brotli
+      const _brotli = await brotliPromise;
+      const _textEncoder = new TextEncoder();
+      const _uncompressedBodyRequest = _textEncoder.encode(
+        JSON.stringify({
           solcInput: solcInput,
           solcOutput: solcOutput,
           compilerVersion: compilerVersion,
-        }),
+        })
+      );
+      const _compressedBodyRequest = _brotli.compress(
+        _uncompressedBodyRequest,
+        {
+          quality: BROTLI_QUALITY,
+        }
+      );
+
+      const response = await fetch("/api/get_namespaced_input", {
+        method: "POST",
+        headers: { "Content-Type": "application/octet-stream" },
+        body: _compressedBodyRequest,
       });
-      const json = await response.json();
-      const _namespacedInput = json.namespacedInput;
+      if (!response.ok) {
+        throw new Error((await response.json()).message);
+      }
+
+      // Parse the response
+      const _arrayBuffer = await response.arrayBuffer();
+      const _compressedNamespacedInput = new Uint8Array(_arrayBuffer);
+      const _decompressedNamespacedInput = _brotli.decompress(
+        _compressedNamespacedInput
+      );
+      const _textDecoder = new TextDecoder();
+      const _namespacedInput = JSON.parse(
+        _textDecoder.decode(_decompressedNamespacedInput)
+      );
 
       // Compile contract using compiler worker
       const worker = new Worker("/dynSolcWorkerBundle.js");
@@ -314,7 +341,17 @@ export default function UploadWizardButton({
         solcBin: compilerVersions[compilerVersion],
       });
     } catch (error) {
-      console.error("Error compiling namespaces" + error);
+      const _solcOutput: SolcOutput = {
+        errors: [
+          {
+            severity: "error",
+            formattedMessage: "Error compiling namespaces: " + error,
+          },
+        ],
+        contracts: {},
+        sources: {},
+      };
+      setSolcOutput(_solcOutput);
       setWizardStep(WizardStep.COMPILATION_ERROR);
       return;
     }
@@ -336,16 +373,28 @@ export default function UploadWizardButton({
     // Extract storage layout using backend
     var storageLayout: StorageLayout | undefined = undefined;
     try {
-      const response = await fetch("/api/extract_storage_layout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      // To avoid Vercel FUNCTION_PAYLOAD_TOO_LARGE minimize the solcOutput
+      const _brotli = await brotliPromise;
+      const _textEncoder = new TextEncoder();
+      const _uncompressedBodyRequest = _textEncoder.encode(
+        JSON.stringify({
           solcInput: solcInput,
           solcOutput: solcOutput,
           namespacedOutput: namespacedOutput,
           sourceName: compiledContracts[selectedContract],
           contractName: selectedContract,
-        }),
+        })
+      );
+      const _compressedBodyRequest = _brotli.compress(
+        _uncompressedBodyRequest,
+        {
+          quality: BROTLI_QUALITY,
+        }
+      );
+      const response = await fetch("/api/extract_storage_layout", {
+        method: "POST",
+        headers: { "Content-Type": "application/octet-stream" },
+        body: _compressedBodyRequest,
       });
       if (!response.ok) {
         throw new Error((await response.json()).message);
@@ -616,7 +665,8 @@ export default function UploadWizardButton({
               Please wait while your contract source files are being compiled.
               {optimizationEnabled && (
                 <p>
-                  Compilation might take a while because the optimizer is enabled.
+                  Compilation might take a while because the optimizer is
+                  enabled.
                 </p>
               )}
             </DialogDescription>
