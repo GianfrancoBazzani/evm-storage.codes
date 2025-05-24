@@ -17,6 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  EVM_VERSIONS,
+  MIN_COMPATIBLE_SOLC_VERSION,
+  MIN_NAMESPACED_COMPATIBLE_SOLC_VERSION,
+} from "@/lib/constants";
 import * as versions from "compare-versions";
 
 import type { SolcInput, SolcOutput } from "@openzeppelin/upgrades-core";
@@ -62,17 +67,6 @@ export default function UploadWizardButton({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Compiler management
-  const EVM_VERSIONS = [
-    "default",
-    "cancun",
-    "shanghai",
-    "paris",
-    "london",
-    "berlin",
-    "istanbul",
-    "petersburg",
-    "constantinople",
-  ];
   const [compilerVersions, setCompilerVersions] = useState<
     Record<string, string>
   >({});
@@ -122,7 +116,6 @@ export default function UploadWizardButton({
       fileInputRef.current.value = "";
     }
   }
-  // TODO Clean all state, remember this when namespaced layouts will be added
 
   // Handler for dialog open state change.
   const handleDialogOpenChange = (open: boolean) => {
@@ -137,7 +130,14 @@ export default function UploadWizardButton({
     try {
       const response = await fetch("/api/get_solc_versions");
       const json = await response.json();
-      setCompilerVersions(json.solc_versions);
+      
+      const compatibleVersions = Object.keys(json.solc_versions)
+        .filter((version) => versions.compare(version, MIN_COMPATIBLE_SOLC_VERSION, '>='))
+        .reduce<Record<string, string>>((acc, version) => {
+          acc[version] = json.solc_versions[version] as string;
+          return acc;
+        }, {});
+      setCompilerVersions(compatibleVersions);
     } catch (error) {
       console.error("Error fetching compilers:", error);
     }
@@ -202,7 +202,6 @@ export default function UploadWizardButton({
     const _solcInput: SolcInput = { sources: sources };
     // @ts-ignore
     _solcInput.language = "Solidity";
-    // TODO Add advanced optimizer configuration
     _solcInput.settings = {
       outputSelection: {
         "*": {
@@ -225,7 +224,6 @@ export default function UploadWizardButton({
       }
     }
     setSolcInput(_solcInput);
-    console.log(_solcInput);
 
     // Compile contracts using compiler worker
     const worker = new Worker("/dynSolcWorkerBundle.js");
@@ -251,7 +249,13 @@ export default function UploadWizardButton({
               }));
             }
           }
-          if (versions.compare(compilerVersion, "0.8.20", ">=")) {
+          if (
+            versions.compare(
+              compilerVersion,
+              MIN_NAMESPACED_COMPATIBLE_SOLC_VERSION,
+              ">="
+            )
+          ) {
             setWizardStep(WizardStep.COMPILING_NAMESPACED);
           } else {
             setWizardStep(WizardStep.SELECT_CONTRACT);
@@ -282,7 +286,7 @@ export default function UploadWizardButton({
       const json = await response.json();
       const _namespacedInput = json.namespacedInput;
 
-      //  Compile contract using compiler worker
+      // Compile contract using compiler worker
       const worker = new Worker("/dynSolcWorkerBundle.js");
       worker.addEventListener(
         "message",
@@ -327,10 +331,9 @@ export default function UploadWizardButton({
     setWizardStep(WizardStep.LOADING);
     if (!selectedContract || !solcInput || !solcOutput) return;
 
-    // Extract storage layout
-    var storageLayout: StorageLayout | undefined = undefined;
 
     // Extract storage layout using backend
+    var storageLayout: StorageLayout | undefined = undefined;
     try {
       const response = await fetch("/api/extract_storage_layout", {
         method: "POST",
@@ -349,7 +352,7 @@ export default function UploadWizardButton({
       const json = await response.json();
       storageLayout = json.storageLayout;
     } catch (error) {
-      setStorageLayoutLoadingError("Error loading storage layout" + error);
+      setStorageLayoutLoadingError("Error loading storage layout: " + error);
       setWizardStep(WizardStep.LOADING_ERROR);
       return;
     }
@@ -611,7 +614,7 @@ export default function UploadWizardButton({
             >
               Please wait while your contract source files are being compiled.
               {optimizationEnabled && (
-                <p className="mt-2">
+                <p>
                   Compilation might take a while because the optimizer is enabled.
                 </p>
               )}
@@ -760,7 +763,7 @@ export default function UploadWizardButton({
         <DialogContent className="bg-black border-green-500 p-6 rounded-md">
           <DialogHeader>
             <DialogTitle className="text-green-500">
-              Errors storage layout loading
+              Error loading storage layout
             </DialogTitle>
             <DialogDescription
               id="upload-dialog-description"
