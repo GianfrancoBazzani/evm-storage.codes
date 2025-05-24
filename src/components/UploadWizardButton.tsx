@@ -130,9 +130,11 @@ export default function UploadWizardButton({
     try {
       const response = await fetch("/api/get_solc_versions");
       const json = await response.json();
-      
+
       const compatibleVersions = Object.keys(json.solc_versions)
-        .filter((version) => versions.compare(version, MIN_COMPATIBLE_SOLC_VERSION, '>='))
+        .filter((version) =>
+          versions.compare(version, MIN_COMPATIBLE_SOLC_VERSION, ">=")
+        )
         .reduce<Record<string, string>>((acc, version) => {
           acc[version] = json.solc_versions[version] as string;
           return acc;
@@ -331,7 +333,6 @@ export default function UploadWizardButton({
     setWizardStep(WizardStep.LOADING);
     if (!selectedContract || !solcInput || !solcOutput) return;
 
-
     // Extract storage layout using backend
     var storageLayout: StorageLayout | undefined = undefined;
     try {
@@ -395,7 +396,7 @@ export default function UploadWizardButton({
     <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
       <DialogTrigger asChild>
         <Button
-          className="bg-green-900/30 text-green-500 border border-green-500 hover:bg-green-600/40 hover:text-green-300 transition-all duration-300 px-8 py-6 text-lg animate-pulse"
+          className="w-52 bg-green-900/30 text-green-500 border border-green-500 hover:bg-green-600/40 hover:text-green-300 transition-all duration-300 px-8 py-6 text-lg animate-pulse"
           onClick={() => setDialogOpen(true)}
         >
           <Upload className="mr-2 h-4 w-4" /> UPLOAD SOURCES
