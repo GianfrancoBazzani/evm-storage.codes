@@ -47,6 +47,7 @@ import * as versions from "compare-versions";
 import type { SolcInput, SolcOutput } from "@openzeppelin/upgrades-core";
 import type { Dispatch, SetStateAction } from "react";
 import type { StorageLayout } from "@openzeppelin/upgrades-core";
+import type { ReactNode } from "react";
 
 const ethAddressSchema = z
   .string()
@@ -176,7 +177,9 @@ export default function AnalyzeWizardButton({
   );
 
   // Errors
-  const [fetchArtifactsError, setFetchArtifactsError] = useState<string>("");
+  const [fetchArtifactsError, setFetchArtifactsError] = useState<
+    string | ReactNode
+  >("");
   const [storageLayoutLoadingError, setStorageLayoutLoadingError] =
     useState<string>("");
 
@@ -224,7 +227,18 @@ export default function AnalyzeWizardButton({
       if (response.status === 404) {
         const data = await response.json();
         setFetchArtifactsError(
-          `Contract at ${data.address} on chain id ${data.chainId} not verified on Sourcify`
+          <>
+            {`Contract at ${data.address} on chain id ${data.chainId} not verified on Sourcify. Please verify your contract using the `}
+            <a
+              href="https://sourcify.dev/#/verifier"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-green-500 underline"
+            >
+              Sourcify Verifier
+            </a>
+            {". "}
+          </>
         );
       } else {
         setFetchArtifactsError((await response.json()).message);
@@ -312,7 +326,11 @@ export default function AnalyzeWizardButton({
             _compilerBinary.match(/v(\d+\.\d+\.\d+)/)?.[1];
           if (
             _compilerVersionSemver &&
-            versions.compare(_compilerVersionSemver, MIN_NAMESPACED_COMPATIBLE_SOLC_VERSION, ">=")
+            versions.compare(
+              _compilerVersionSemver,
+              MIN_NAMESPACED_COMPATIBLE_SOLC_VERSION,
+              ">="
+            )
           ) {
             setWizardStep(WizardStep.COMPILING_NAMESPACED);
           } else {
@@ -606,7 +624,8 @@ export default function AnalyzeWizardButton({
                 //@ts-ignore
                 solcInput?.settings?.optimizer?.enabled && (
                   <p>
-                    Compilation might take a while because the optimizer is enabled.
+                    Compilation might take a while because the optimizer is
+                    enabled.
                   </p>
                 )
               }
