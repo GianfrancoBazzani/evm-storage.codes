@@ -474,7 +474,7 @@ export default function AnalyzeWizardButton({
     <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
       <DialogTrigger asChild>
         <Button
-          className="bg-green-900/30 text-green-500 border border-green-500 hover:bg-green-600/40 hover:text-green-300 transition-all duration-300 px-8 py-6 text-lg animate-pulse"
+          className="w-52 bg-green-900/30 text-green-500 border border-green-500 hover:bg-green-600/40 hover:text-green-300 transition-all duration-300 px-8 py-6 text-lg animate-pulse"
           onClick={() => setDialogOpen(true)}
         >
           <Upload className="mr-2 h-4 w-4" /> ANALYZE ADDRESS
@@ -735,7 +735,7 @@ export default function AnalyzeWizardButton({
               <label className="block text-green-500 mb-2 bg-red">
                 Sourcify Verification Status
               </label>
-              <div className="flex items-center flex-row mb-2 gap-2">
+              <div className="flex flex-col md:flex-row items-start md:items-center  mb-2 gap-2">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Badge>

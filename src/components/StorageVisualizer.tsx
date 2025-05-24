@@ -251,7 +251,7 @@ export default function StorageVisualizer({
   }
 
   return (
-    <Card className="bg-black border-green-500 mb-6 overflow-hidden relative py-0 gap-0 h-full w-full transition-all duration-500 ease-in-out">
+    <Card className="bg-black border-green-500 overflow-hidden relative py-0 gap-0 h-full w-full transition-all duration-500 ease-in-out">
       {/* Upper Bar */}
       <div className="flex max-w-full justify-between items-center p-2 border-b border-green-500/50 bg-green-900/20">
         <div className="flex max-w-full truncate items-center gap-2">
@@ -312,7 +312,7 @@ export default function StorageVisualizer({
             </Tooltip>
             <DialogContent
               onCloseAutoFocus={(e) => e.preventDefault()}
-              className="bg-black border-green-500 p-6 rounded-md"
+              className="flex flex-col md:max-w-xl bg-black border-green-500 p-6 rounded-md"
             >
               <DialogHeader>
                 <DialogTitle className="text-green-500">
@@ -325,7 +325,7 @@ export default function StorageVisualizer({
                   Choose the origin of the contract sources for analysis.
                 </DialogDescription>
               </DialogHeader>
-              <div className="mt-6 mb-6 flex flex-row justify-center gap-4">
+              <div className="mt-6 mb-6 flex flex-col sm:flex-row items-center justify-center gap-4">
                 <UploadWizardButton
                   setParentDialogOpen={setAddContractDialogOpen}
                   triggerVisualizerId={id}
@@ -385,7 +385,7 @@ export default function StorageVisualizer({
         {/*Content */}
         {storageLayouts.map((layout, index) => (
           <TabsContent value={layout.name} className="mt-0">
-            <div className="px-4 pb-2 text-green-500 text-[11px]">
+            <div className="px-4 pb-2 text-green-500 text-[8px] md:text-[11px]">
               base slot: {layout.baseSlot}
             </div>
             {layout.slots.length === 0 && (

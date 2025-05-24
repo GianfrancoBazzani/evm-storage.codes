@@ -1,4 +1,4 @@
-import { Github, Coffee} from "lucide-react";
+import { Github, Coffee } from "lucide-react";
 import UploadWizardButton from "@/components/UploadWizardButton";
 import AnalyzeWizardButton from "@/components/AnalyzeWizardButton";
 
@@ -22,15 +22,17 @@ export default function Landing() {
           alt="floppy-logo"
           className="hidden lg:flex object-contain max-h-20"
         />
-        <pre className="flex-1 text-green-500 text-[0.4rem] sm:text-[0.5rem] md:text-xs leading-none">
+        <pre className="flex-1 text-green-500 text-[0.25rem] md:text-[0.4rem] lg:text-xs leading-none">
           {asciiTitle}
         </pre>
       </div>
 
-      {/* Butons */}
-      <div className="mt-12 bg-black border border-green-500 p-4 mb-8 relative overflow-hidden max-w-2xl mx-auto rounded-lg">
-        <span>Analyze and compare EVM smart contracts storage layouts.</span>
-        <div className="mt-6 mb-6 flex flex-row justify-center gap-4">
+      {/* Buttons */}
+      <div className="flex flex-col md:max-w-2xl border border-green-500 mt-12 mb-8 mx-6 p-6 rounded-lg">
+        <span className="flex mb-4">
+          Analyze and compare EVM smart contracts storage layouts.
+        </span>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <UploadWizardButton />
           <AnalyzeWizardButton />
         </div>
