@@ -1702,9 +1702,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@openzeppelin/upgrades-core@npm:^1.44.0":
-  version: 1.44.0
-  resolution: "@openzeppelin/upgrades-core@npm:1.44.0"
+"@openzeppelin/upgrades-core@npm:^1.44.1":
+  version: 1.44.1
+  resolution: "@openzeppelin/upgrades-core@npm:1.44.1"
   dependencies:
     "@nomicfoundation/slang": "npm:^0.18.3"
     bignumber.js: "npm:^9.1.2"
@@ -1719,7 +1719,7 @@ __metadata:
     solidity-ast: "npm:^0.4.60"
   bin:
     openzeppelin-upgrades-core: dist/cli/cli.js
-  checksum: 587734f6cfe12f352c2d79b52579314c7d4cc7854668801467414a12200203d2481e078ffe5213fe676fc99677ff0ba31a4e3027332f27d1598ddbfed58fe50b
+  checksum: 4ff49400aa3e87106b9e653976d1ec4b261e242b974fe022bf290f9f783f0dbcb8c2b306e73028c0f364b83428b3dc1d66d0c668d4a05cce0446a40d418187a4
   languageName: node
   linkType: hard
 
@@ -3285,11 +3285,11 @@ __metadata:
   linkType: hard
 
 "@types/node@npm:*":
-  version: 22.14.1
-  resolution: "@types/node@npm:22.14.1"
+  version: 22.15.21
+  resolution: "@types/node@npm:22.15.21"
   dependencies:
     undici-types: "npm:~6.21.0"
-  checksum: d49c4d00403b1c2348cf0701b505fd636d80aabe18102105998dc62fdd36dcaf911e73c7a868c48c21c1022b825c67b475b65b1222d84b704d8244d152bb7f86
+  checksum: f092bbccda2131c2b2c8f720338080aa0ef1d928f5f1062c03954a4f7dafa7ee3ed29bc3e51bd4e2584473b3d943c637a2b39ad7174898970818270187cf10c1
   languageName: node
   linkType: hard
 
@@ -4022,7 +4022,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"bn.js@npm:^5.1.2, bn.js@npm:^5.2.0, bn.js@npm:^5.2.1":
+"bn.js@npm:^5.1.2, bn.js@npm:^5.2.0":
+  version: 5.2.2
+  resolution: "bn.js@npm:5.2.2"
+  checksum: cb97827d476aab1a0194df33cd84624952480d92da46e6b4a19c32964aa01553a4a613502396712704da2ec8f831cf98d02e74ca03398404bd78a037ba93f2ab
+  languageName: node
+  linkType: hard
+
+"bn.js@npm:^5.2.1":
   version: 5.2.1
   resolution: "bn.js@npm:5.2.1"
   checksum: bed3d8bd34ec89dbcf9f20f88bd7d4a49c160fda3b561c7bb227501f974d3e435a48fb9b61bc3de304acab9215a3bda0803f7017ffb4d0016a0c3a740a283caa
@@ -5532,7 +5539,7 @@ __metadata:
     "@babel/preset-env": "npm:^7.26.9"
     "@eslint/js": "npm:^9.21.0"
     "@fontsource-variable/pixelify-sans": "npm:^5.2.5"
-    "@openzeppelin/upgrades-core": "npm:^1.44.0"
+    "@openzeppelin/upgrades-core": "npm:^1.44.1"
     "@radix-ui/react-dialog": "npm:^1.1.13"
     "@radix-ui/react-popover": "npm:^1.1.13"
     "@radix-ui/react-select": "npm:^2.1.6"
