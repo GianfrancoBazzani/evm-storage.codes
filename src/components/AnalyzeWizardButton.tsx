@@ -350,6 +350,13 @@ export default function AnalyzeWizardButton({
   // Compile Namespaces useEffect
   async function compileNamespaces() {
     try {
+      // To avoid Vercel FUNCTION_PAYLOAD_TOO_LARGE minimize the solcOutput
+      // Backup solcOutput
+      const _solcOutput = JSON.parse(JSON.stringify(solcOutput));
+      // Remove all contracts from _solcOutput to avoid large payload
+      // @ts-ignore
+      _solcOutput.contracts = {};
+
       const _compilerVersionSemver =
         compilerBinary.match(/v(\d+\.\d+\.\d+)/)?.[1];
       const response = await fetch("/api/get_namespaced_input", {
@@ -357,7 +364,7 @@ export default function AnalyzeWizardButton({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           solcInput: solcInput,
-          solcOutput: solcOutput,
+          solcOutput: _solcOutput,
           compilerVersion: _compilerVersionSemver,
         }),
       });
@@ -414,6 +421,8 @@ export default function AnalyzeWizardButton({
 
     // Extract storage layout using backend
     try {
+      // To avoid Vercel FUNCTION_PAYLOAD_TOO_LARGE minimize the solcOutput
+      // TODO
       const response = await fetch("/api/extract_storage_layout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
