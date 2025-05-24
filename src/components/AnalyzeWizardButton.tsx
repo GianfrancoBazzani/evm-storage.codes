@@ -744,7 +744,7 @@ export default function AnalyzeWizardButton({
                         : "Match"}
                     </Badge>
                   </TooltipTrigger>
-                  <TooltipContent className="bg-green-700 border-green-950 border text-black px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200 max-w-[350px]">
+                  <TooltipContent className="bg-black border-green-500 border text-green-500 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200 max-w-[350px]">
                     {verificationStatus.isExactMatch
                       ? "Exact match: The onchain and compiled bytecode match exactly, including the metadata hashes"
                       : "Match: The onchain and compiled bytecode match, but metadata hashes differ or don't exist"}
@@ -762,7 +762,7 @@ export default function AnalyzeWizardButton({
                       Runtime Bytecode
                     </Badge>
                   </TooltipTrigger>
-                  <TooltipContent className="bg-green-700 border-green-950 border text-black px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200 max-w-[350px]">
+                  <TooltipContent className="bg-black border-green-500 border text-green-500  px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200 max-w-[350px]">
                     {verificationStatus.runtimeMatch
                       ? "Contract matched with runtime bytecode"
                       : "Contract not matched with runtime bytecode"}
@@ -780,7 +780,7 @@ export default function AnalyzeWizardButton({
                       Creation Bytecode
                     </Badge>
                   </TooltipTrigger>
-                  <TooltipContent className="bg-green-700 border-green-950 border text-black px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200 max-w-[350px]">
+                  <TooltipContent className="bg-black border-green-500 border text-green-500 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200 max-w-[350px]">
                     {verificationStatus.creationMatch
                       ? "Contract matched with creation bytecode"
                       : "Contract not matched with creation bytecode"}
