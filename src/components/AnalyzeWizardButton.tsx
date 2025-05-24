@@ -36,6 +36,10 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
+import {
+  MIN_COMPATIBLE_SOLC_VERSION,
+  MIN_NAMESPACED_COMPATIBLE_SOLC_VERSION,
+} from "@/lib/constants";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
 import * as versions from "compare-versions";
@@ -245,6 +249,19 @@ export default function AnalyzeWizardButton({
       return;
     }
 
+    // Check compiler version
+    const compilerVersionSemVer =
+      compilation.compilerVersion.match(/^(\d+\.\d+\.\d+)/)?.[1] ?? "";
+    if (
+      versions.compare(compilerVersionSemVer, MIN_COMPATIBLE_SOLC_VERSION, "<")
+    ) {
+      setFetchArtifactsError(
+        `Contract code has been verified using compiler version ${compilerVersionSemVer}, which is not supported. The minimum compatible version is ${MIN_COMPATIBLE_SOLC_VERSION}.`
+      );
+      setWizardStep(WizardStep.FETCHING_ERROR);
+      return;
+    }
+
     // Prepare compilation input
     const _compilerBinary = `solc-emscripten-wasm32-v${compilation.compilerVersion}.js`;
     const _solcInput: SolcInput = stdJsonInput;
@@ -295,7 +312,7 @@ export default function AnalyzeWizardButton({
             _compilerBinary.match(/v(\d+\.\d+\.\d+)/)?.[1];
           if (
             _compilerVersionSemver &&
-            versions.compare(_compilerVersionSemver, "0.8.20", ">=")
+            versions.compare(_compilerVersionSemver, MIN_NAMESPACED_COMPATIBLE_SOLC_VERSION, ">=")
           ) {
             setWizardStep(WizardStep.COMPILING_NAMESPACED);
           } else {
@@ -573,7 +590,7 @@ export default function AnalyzeWizardButton({
         </DialogContent>
       )}
 
-      {/* Wizard Step 3: Compilation Spinner  TODO Add msg that detects if the  optimizer is enabled and make the user aware that could take a while*/}
+      {/* Wizard Step 3: Compilation Spinner */}
       {wizardStep === WizardStep.COMPILING && (
         <DialogContent className="bg-black border-green-500 p-6 rounded-md">
           <DialogHeader>
@@ -588,9 +605,8 @@ export default function AnalyzeWizardButton({
               {
                 //@ts-ignore
                 solcInput?.settings?.optimizer?.enabled && (
-                  <p className="mt-2">
-                    Compilation might take a while because the optimizer is
-                    enabled.
+                  <p>
+                    Compilation might take a while because the optimizer is enabled.
                   </p>
                 )
               }
