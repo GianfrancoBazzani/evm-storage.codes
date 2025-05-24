@@ -43,6 +43,7 @@ import {
 import { z } from "zod";
 import { cn } from "@/lib/utils";
 import * as versions from "compare-versions";
+import brotliPromise from "brotli-wasm";
 
 import type { SolcInput, SolcOutput } from "@openzeppelin/upgrades-core";
 import type { Dispatch, SetStateAction } from "react";
@@ -355,7 +356,26 @@ export default function AnalyzeWizardButton({
       const _solcOutput = JSON.parse(JSON.stringify(solcOutput));
       // Remove all contracts from _solcOutput to avoid large payload
       // @ts-ignore
-      _solcOutput.contracts = {};
+      //_solcOutput.contracts = {};
+      // TODO Delete login
+      console.log("before get_namespaced_input");
+      const outputLength = new TextEncoder().encode(
+        JSON.stringify(_solcOutput)
+      ).length;
+      console.log(`Size output: ${(outputLength / (1024 * 1024)).toFixed(2)} MB`);
+      console.log(_solcOutput);
+
+      // TODO init this in the state of the APP
+      const brotli = await brotliPromise;
+      const textEncoder = new TextEncoder();
+      const uncompressedOutput= textEncoder.encode(JSON.stringify(_solcOutput));
+      const compressedOutput = brotli.compress(uncompressedOutput, {quality: 9});
+      //const compressedOutput = "xustarri"
+
+      console.log(`Size output: ${(compressedOutput.length / (1024 * 1024)).toFixed(2)} MB`);
+      console.log(compressedOutput);
+
+
 
       const _compilerVersionSemver =
         compilerBinary.match(/v(\d+\.\d+\.\d+)/)?.[1];

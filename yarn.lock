@@ -4071,6 +4071,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"brotli-wasm@npm:^3.0.1":
+  version: 3.0.1
+  resolution: "brotli-wasm@npm:3.0.1"
+  checksum: b458b9fe7c31a5e8255133bd26a258f79fb1b816a8d609b45a662726476315e63c539bcb7d5b8bd542cc9a7d2c91fcd4ce27154d19c33d1932f5b1618e09f23b
+  languageName: node
+  linkType: hard
+
 "browser-pack@npm:^6.0.1":
   version: 6.1.0
   resolution: "browser-pack@npm:6.1.0"
@@ -5556,6 +5563,7 @@ __metadata:
     "@vercel/node": "npm:^5.1.14"
     "@vitejs/plugin-react-swc": "npm:^3.8.0"
     babelify: "npm:^10.0.0"
+    brotli-wasm: "npm:^3.0.1"
     browserify: "npm:^17.0.1"
     buffer: "npm:^6.0.3"
     class-variance-authority: "npm:^0.7.1"
