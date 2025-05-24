@@ -271,7 +271,7 @@ export default function StorageVisualizer({
                 <Copy className="h-3 w-3" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent className="bg-green-700 border-green-950 border text-black px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
+            <TooltipContent className="bg-black border-green-500 border text-green-500 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
               Copy
             </TooltipContent>
           </Tooltip>
@@ -285,7 +285,7 @@ export default function StorageVisualizer({
                 <GitCompareArrows className="h-3 w-3" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent className="bg-green-700 border-green-950 border text-black px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
+            <TooltipContent className="bg-black border-green-500 border text-green-500 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
               Compare
             </TooltipContent>
           </Tooltip>
@@ -306,7 +306,7 @@ export default function StorageVisualizer({
                   </Button>
                 </DialogTrigger>
               </TooltipTrigger>
-              <TooltipContent className="bg-green-700 border-green-950 border text-black px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
+              <TooltipContent className="bg-black border-green-500 border text-green-500 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
                 Add Contract
               </TooltipContent>
             </Tooltip>
@@ -348,7 +348,7 @@ export default function StorageVisualizer({
                 <X className="h-3 w-3" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent className="bg-green-700 border-green-950 border text-black  px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
+            <TooltipContent className="bg-black border-green-500 border text-green-500  px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
               Close
             </TooltipContent>
           </Tooltip>
@@ -447,7 +447,7 @@ export default function StorageVisualizer({
                               className="h-full absolute border border-green-500"
                             />
                           </TooltipTrigger>
-                          <TooltipContent className="bg-green-700 border-green-950 border text-black px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
+                          <TooltipContent className="bg-black border-green-500 border text-green-500 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
                             <span>
                               {`${
                                 storageLayout?.types[item.item.type].label
