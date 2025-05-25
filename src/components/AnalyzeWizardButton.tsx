@@ -383,15 +383,11 @@ export default function AnalyzeWizardButton({
         throw new Error((await response.json()).message);
       }
       
-      // Parse the response
+      // Decode the response
       const _arrayBuffer = await response.arrayBuffer();
-      const _compressedNamespacedInput = new Uint8Array(_arrayBuffer);
-      const _decompressedNamespacedInput = _brotli.decompress(
-        _compressedNamespacedInput
-      );
       const _textDecoder = new TextDecoder();
       const _namespacedInput = JSON.parse(
-        _textDecoder.decode(_decompressedNamespacedInput)
+        _textDecoder.decode(_arrayBuffer)
       );
 
       //  Compile contract using compiler worker

@@ -52,6 +52,7 @@ export async function POST(request) {
     return new Response(compressedNamespacedInput, {
       status: 200,
       headers: {
+        "Content-Encoding":"br",
         "Content-Type": "application/octets-stream",
       },
     });
