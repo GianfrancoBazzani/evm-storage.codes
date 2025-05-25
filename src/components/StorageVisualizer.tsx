@@ -407,18 +407,18 @@ export default function StorageVisualizer({
                     {slot.map((item, index) => (
                       <div key={index} className=" flex flex-col">
                         <Tooltip
-                          open={
+                          open={Boolean(
                             visibleTooltips[
                               `${layout.name}|${
                                 storageLayout?.types[item.item.type].label
                               }|${item.item.label}`
                             ] ||
-                            pinnedTooltips[
-                              `${layout.name}|${
-                                storageLayout?.types[item.item.type].label
-                              }|${item.item.label}`
-                            ]
-                          }
+                              pinnedTooltips[
+                                `${layout.name}|${
+                                  storageLayout?.types[item.item.type].label
+                                }|${item.item.label}`
+                              ]
+                          )}
                           onOpenChange={(isOpen) =>
                             handleOpenTooltip(
                               `${layout.name}|${
