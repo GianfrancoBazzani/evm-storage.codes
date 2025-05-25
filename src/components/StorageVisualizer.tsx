@@ -1,12 +1,5 @@
 import { useContext, useState } from "react";
-import {
-  Code,
-  Share,
-  X,
-  GitCompareArrows,
-  Cross,
-  TriangleAlert,
-} from "lucide-react";
+import { Code, Share, X, Cross, TriangleAlert } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -26,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import UploadWizardButton from "@/components/UploadWizardButton";
 import AnalyzeWizardButton from "@/components/AnalyzeWizardButton";
+import ComparisonWizardButton from "@/components/ComparisonWizardButton";
 import ColorHash from "color-hash";
 import { normalizeUint256Literal } from "@/lib/integer-literals";
 import { erc7201 } from "@/lib/erc7201";
@@ -290,13 +284,7 @@ export default function StorageVisualizer({
           )}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-green-500 hover:bg-green-900/30 hover:text-green-500 hover:rounded"
-              >
-                <GitCompareArrows className="h-3 w-3" />
-              </Button>
+              <ComparisonWizardButton />
             </TooltipTrigger>
             <TooltipContent className="bg-black border-green-500 border text-green-500 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
               Compare

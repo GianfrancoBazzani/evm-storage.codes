@@ -83,6 +83,8 @@ export async function POST(request) {
           );
           throw new Error("");
         }
+        // TODO: Improve integrity test right now storage layout can be tricked if frontend is malicious
+        // so we don't pick the cached smart contracts automatically in AnalyzeWizardButton before compilation steps.
 
         // Cache the storage layout in Redis
         const redis = Redis.fromEnv();

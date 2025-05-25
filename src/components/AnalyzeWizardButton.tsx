@@ -572,7 +572,7 @@ export default function AnalyzeWizardButton({
                         })`
                       : "Search network..."}
                   </span>
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50 text-green-500" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-full p-2 text-base bg-black border border-green-500 rounded-md">
