@@ -2,18 +2,25 @@ import {
   solcInputOutputDecoder,
   extractStorageLayout,
 } from "@openzeppelin/upgrades-core";
+import { brotliDecompressSync } from "zlib";
 
 import { findAll, astDereferencer, isNodeType } from "solidity-ast/utils.js";
 
 export async function POST(request) {
   try {
-    const {
-      solcInput,
-      solcOutput,
-      namespacedOutput,
-      sourceName,
-      contractName,
-    } = await request.json();
+    // Get the request body as an ArrayBuffer
+    const requestBodyArrayBuffer = await request.arrayBuffer();
+    const requestBodyBuffer = Buffer.from(requestBodyArrayBuffer);
+
+    // Decompress and deconstruct the data
+    const decompressedData = brotliDecompressSync(requestBodyBuffer);
+    const decompressedDataString = decompressedData.toString("utf-8");
+    const decompressedDataJson = JSON.parse(decompressedDataString);
+    const solcInput = decompressedDataJson.solcInput;
+    const solcOutput = decompressedDataJson.solcOutput;
+    const namespacedOutput = decompressedDataJson.namespacedOutput;
+    const sourceName = decompressedDataJson.sourceName;
+    const contractName = decompressedDataJson.contractName;
 
     // Build decodeSrc function
     const decodeSrc = solcInputOutputDecoder(solcInput, solcOutput);
@@ -43,7 +50,7 @@ export async function POST(request) {
       solcOutput.contracts[sourceName][contractDef.name].storageLayout,
       getNamespacedCompilationContext(sourceName, contractDef, namespacedOutput)
     );
-
+    // TODO Store Storage Layout in a database or cache (we will need the address also)
     return new Response(JSON.stringify({ storageLayout }), {
       status: 200,
       headers: {

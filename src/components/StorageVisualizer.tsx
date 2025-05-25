@@ -251,7 +251,7 @@ export default function StorageVisualizer({
   }
 
   return (
-    <Card className="bg-black border-green-500 overflow-hidden relative py-0 gap-0 h-full w-full transition-all duration-500 ease-in-out">
+    <Card className="bg-black border-green-500 md:mb-4 overflow-hidden relative py-0 gap-0 h-full w-full transition-all duration-500 ease-in-out">
       {/* Upper Bar */}
       <div className="flex max-w-full justify-between items-center p-2 border-b border-green-500/50 bg-green-900/20">
         <div className="flex max-w-full truncate items-center gap-2">
