@@ -298,6 +298,7 @@ export default function AnalyzeWizardButton({
       isExactMatch:
         _creationMatch === "exact_match" || _runtimeMatch === "exact_match",
     });
+    setSelectedContract(compilation.name);
 
     // Compile contracts using compiler worker
     setWizardStep(WizardStep.COMPILING);
