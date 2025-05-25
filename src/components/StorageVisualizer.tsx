@@ -1,7 +1,7 @@
 import { useContext, useState } from "react";
 import {
   Code,
-  Copy,
+  Share,
   X,
   GitCompareArrows,
   Cross,
@@ -39,12 +39,16 @@ export interface StorageVisualizerProps {
   contractName: string;
   id: number;
   storageLayout: StorageLayout;
+  chainId: number | undefined;
+  address: string | undefined;
 }
 
 export default function StorageVisualizer({
   contractName,
   id,
   storageLayout,
+  chainId,
+  address,
 }: StorageVisualizerProps) {
   // Global context
   const storageLayoutsContext = useContext(StorageLayoutsContext);
@@ -257,24 +261,33 @@ export default function StorageVisualizer({
         <div className="flex max-w-full truncate items-center gap-2">
           <Code className="text-green-500 h-4 w-4" />
           <span className="text-green-500 text-sm font-bold">
-            {contractName}
+            {chainId !== undefined && address !== undefined
+              ? `${contractName} (Addr: ${address.slice(0, 10)}...${address.slice(-8)} | Chain Id: ${chainId})`
+              : contractName}
           </span>
         </div>
         <div className="flex gap-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-green-500 hover:bg-green-900/30 hover:text-green-500 hover:rounded"
-              >
-                <Copy className="h-3 w-3" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="bg-black border-green-500 border text-green-500 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
-              Copy
-            </TooltipContent>
-          </Tooltip>
+          {chainId !== undefined && address !== undefined && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() =>
+                    navigator.clipboard.writeText(
+                      `https://evm-storage.codes/?address=${address}&chainId=${chainId}`
+                    )
+                  }
+                  className="h-6 w-6 text-green-500 hover:bg-green-900/30 hover:text-green-500 hover:rounded"
+                >
+                  <Share className="h-3 w-3" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="bg-black border-green-500 border text-green-500 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
+                Share
+              </TooltipContent>
+            </Tooltip>
+          )}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

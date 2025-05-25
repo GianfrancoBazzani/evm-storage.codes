@@ -3,8 +3,8 @@ import {
   extractStorageLayout,
 } from "@openzeppelin/upgrades-core";
 import { brotliDecompressSync } from "zlib";
-
 import { findAll, astDereferencer, isNodeType } from "solidity-ast/utils.js";
+import { Redis } from "@upstash/redis";
 
 export async function POST(request) {
   try {
@@ -21,6 +21,8 @@ export async function POST(request) {
     const namespacedOutput = decompressedDataJson.namespacedOutput;
     const sourceName = decompressedDataJson.sourceName;
     const contractName = decompressedDataJson.contractName;
+    const chainId = decompressedDataJson.chainId;
+    const address = decompressedDataJson.address;
 
     // Build decodeSrc function
     const decodeSrc = solcInputOutputDecoder(solcInput, solcOutput);
@@ -50,7 +52,51 @@ export async function POST(request) {
       solcOutput.contracts[sourceName][contractDef.name].storageLayout,
       getNamespacedCompilationContext(sourceName, contractDef, namespacedOutput)
     );
-    // TODO Store Storage Layout in a database or cache (we will need the address also)
+
+    // Cache the storage layout in the database if it is not already cached
+    if (chainId && address) {
+      try {
+        // Minimal integrity test
+        const response = await fetch(
+          `https://sourcify.dev/server/v2/contract/${chainId}/${address}?fields=stdJsonInput,compilation`,
+          {
+            method: "GET",
+          }
+        );
+        if (!response.ok) {
+          console.error("Failed to fetch contract data from Sourcify");
+          throw new Error("");
+        }
+        const { stdJsonInput, compilation } = await response.json();
+        if (
+          JSON.stringify(stdJsonInput.sources) !==
+          JSON.stringify(solcInput.sources)
+        ) {
+          console.warn(
+            "Sourcify sources do not match the provided solcInput sources storage layout wont be cached"
+          );
+          throw new Error("");
+        }
+        if (contractName !== compilation.name) {
+          console.warn(
+            "Sourcify contract name does not match the provided contractName storage layout wont be cached"
+          );
+          throw new Error("");
+        }
+
+        // Cache the storage layout in Redis
+        const redis = Redis.fromEnv();
+        const cacheKey = `${chainId}:${address}`;
+        await redis.set(cacheKey, {
+          storageLayout: storageLayout,
+          contractName: contractName,
+        });
+        //await redis.set(cacheKey, storageLayout, {
+        //  nx: true, // only store if not already exists
+        //});
+      } catch (error) {}
+    }
+
     return new Response(JSON.stringify({ storageLayout }), {
       status: 200,
       headers: {
@@ -61,7 +107,6 @@ export async function POST(request) {
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
-    console.error(errorMessage);
     return new Response(JSON.stringify({ message: errorMessage }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

@@ -459,6 +459,8 @@ export default function AnalyzeWizardButton({
           namespacedOutput: namespacedOutput,
           sourceName: compiledContracts[selectedContract],
           contractName: selectedContract,
+          chainId: chains.find((_chain) => _chain.name === chainName)?.chainId,
+          address: address,
         })
       );
       const _compressedBodyRequest = _brotli.compress(
@@ -495,6 +497,8 @@ export default function AnalyzeWizardButton({
             contractName: selectedContract,
             id: 0,
             storageLayout: storageLayout!,
+            chainId: chains.find((_chain) => _chain.name === chainName)?.chainId,
+            address: address
           },
           ...prevLayouts.slice(triggerVisualizerId + 1),
         ];
@@ -508,6 +512,8 @@ export default function AnalyzeWizardButton({
           contractName: selectedContract,
           id: 0,
           storageLayout: storageLayout!,
+          chainId: chains.find((_chain) => _chain.name === chainName)?.chainId,
+          address: address
         },
       ];
     });

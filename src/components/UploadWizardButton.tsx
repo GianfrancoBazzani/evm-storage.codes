@@ -379,6 +379,8 @@ export default function UploadWizardButton({
           namespacedOutput: namespacedOutput,
           sourceName: compiledContracts[selectedContract],
           contractName: selectedContract,
+          chainId: undefined,
+          address: undefined,
         })
       );
       const _compressedBodyRequest = _brotli.compress(
@@ -412,6 +414,8 @@ export default function UploadWizardButton({
             contractName: selectedContract,
             id: 0,
             storageLayout: storageLayout!,
+            chainId: undefined,
+            address: undefined,
           },
           ...prevLayouts.slice(triggerVisualizerId + 1),
         ];
@@ -425,6 +429,8 @@ export default function UploadWizardButton({
           contractName: selectedContract,
           id: 0,
           storageLayout: storageLayout!,
+          chainId: undefined,
+          address: undefined
         },
       ];
     });
