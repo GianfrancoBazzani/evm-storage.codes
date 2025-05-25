@@ -532,7 +532,7 @@ export default function AnalyzeWizardButton({
 
       {/* Wizard Step 1: Select Network and Address */}
       {wizardStep === WizardStep.SELECT_ADDRESS && (
-        <DialogContent className="bg-black border-green-500 p-6 rounded-md">
+        <DialogContent className="flex w-full flex-col bg-black border-green-500 p-6 rounded-md">
           <DialogHeader>
             <DialogTitle className="text-green-500">
               Fetch Smart Contract Code
@@ -541,28 +541,20 @@ export default function AnalyzeWizardButton({
               id="upload-dialog-description"
               className="text-green-800"
             >
-              Select the network and enter the smart contract address to
-              retrieve its code from the blockchain.
+              Select the network and enter the smart contract address to retrieve its code from the blockchain.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 mt-4">
-            <label className="block text-green-500 mb-2">Network</label>
-            <Popover
-              open={chainsPopoverOpen}
-              onOpenChange={setChainsPopoverOpen}
-            >
-              <PopoverTrigger className="w-full" asChild>
+          <div className=" flex flex-col w-full space-y-4 mt-4">
+            <label className="flex w-full text-green-500 mb-2">Network</label>
+            <Popover open={chainsPopoverOpen} onOpenChange={setChainsPopoverOpen}>
+              <PopoverTrigger className="flex l" asChild>
                 <Button
                   variant="outline"
                   role="combobox"
                   aria-expanded={chainsPopoverOpen}
-                  className="w-full h-10 justify-between text-base bg-black border border-green-500 hover:bg-black rounded-md p-2"
+                  className="flex max-w-full overflow-hidden truncate h-10 justify-between text-base bg-black border border-green-500 hover:bg-black rounded-md p-2"
                 >
-                  <span
-                    className={
-                      chainName ? "text-green-500" : "text-green-500/50"
-                    }
-                  >
+                  <span className={`flex max-w-full overflow-hidden ${chainName ? "text-green-500" : "text-green-500/50"} `}>
                     {chainName
                       ? `${
                           chains.find((_chain) => _chain.name === chainName)
@@ -634,7 +626,7 @@ export default function AnalyzeWizardButton({
             </Button>
           </div>
         </DialogContent>
-      )}
+    )}
 
       {/* Wizard Step 2: Fetching Spinner */}
       {wizardStep === WizardStep.FETCHING && (
