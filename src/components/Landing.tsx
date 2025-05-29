@@ -48,9 +48,9 @@ export default function Landing() {
   ];
 
   return (
-    <div className="h-screen w-screen flex flex-col items-center justify-center bg-black text-green-500 text-center">
+    <div className="min-h-screen w-screen flex flex-col items-center justify-center bg-black text-green-500 text-center overflow-y-auto pt-[env(safe-area-inset-top)]">
       {/* Main Logo */}
-      <div className="flex flex-row items-center justify-center gap-4">
+      <div className="flex flex-row mt-6 items-center justify-center gap-4">
         <img
           src="/floppy-logo.png"
           alt="floppy-logo"
@@ -62,7 +62,7 @@ export default function Landing() {
       </div>
 
       {/* Buttons */}
-      <div className="flex flex-col items-center md:w-xl border border-green-500 mt-12 mb-8 mx-6 p-6 rounded-lg">
+      <div className="flex flex-col items-center md:w-xl border border-green-500 mt-6 mb-8 md:m-12 mx-6 p-6 rounded-lg">
         <span className="flex mb-4">
           Analyze and compare EVM smart contracts storage layouts.
         </span>
@@ -83,7 +83,7 @@ export default function Landing() {
                   href={`https://evm-storage.codes/?address=${example.address}&chainId=${example.chainId}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className=" underline"
+                  className="underline"
                 >
                   {example.name}: {example.address.slice(0, 10)}...$
                   {example.address.slice(-8)} (Chain ID: {example.chainId})
@@ -97,7 +97,7 @@ export default function Landing() {
       </div>
 
       {/* Links */}
-      <div className="mt-12 flex gap-8 text-center text-xs">
+      <div className="mt-6 md:mt-12 flex gap-8 text-center text-xs">
         <a
           href="https://buymeacoffee.com/gianfrancobazzani"
           target="_blank"
@@ -121,7 +121,7 @@ export default function Landing() {
       </div>
 
       {/* Powered by Banner */}
-      <div className="mt-12 text-xs">
+      <div className="mt-12 mb-6 text-xs">
         <span>Powered by </span>
         <a
           href="https://github.com/OpenZeppelin/openzeppelin-upgrades"
