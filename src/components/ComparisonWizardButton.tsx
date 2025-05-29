@@ -17,6 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 import type { StorageVisualizerProps } from "@/components/StorageVisualizer";
 
@@ -103,19 +108,26 @@ export default function ComparisonWizardButton() {
   return (
     <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
       <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          disabled={storageLayouts.length < 2}
-          className={`h-6 w-6 ${
-            storageLayouts.length < 2
-              ? "text-green-300 cursor-not-allowed"
-              : "text-green-500 hover:bg-green-900/30 hover:text-green-500 hover:rounded"
-          }`}
-          onClick={() => setDialogOpen(true)}
-        >
-          <GitCompareArrows className="h-3 w-3" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={storageLayouts.length < 2}
+              className={`h-6 w-6 ${
+                storageLayouts.length < 2
+                  ? "text-green-300 cursor-not-allowed"
+                  : "text-green-500 hover:bg-green-900/30 hover:text-green-500 hover:rounded"
+              }`}
+              onClick={() => setDialogOpen(true)}
+            >
+              <GitCompareArrows className="h-3 w-3" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent className="bg-black border-green-500 border text-green-500 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
+            Compare
+          </TooltipContent>
+        </Tooltip>
       </DialogTrigger>
 
       {/* Wizard Step 1: Select Storage Layouts To compare */}

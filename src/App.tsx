@@ -53,7 +53,7 @@ function App() {
               id: 0,
               storageLayout: data.storageLayout,
               chainId: Number(chainId),
-              address: address? address : undefined,
+              address: address ? address : undefined,
             },
           ]);
         }

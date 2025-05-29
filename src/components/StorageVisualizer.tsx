@@ -1,5 +1,5 @@
 import { useContext, useState } from "react";
-import { Code, Share, X, Cross, TriangleAlert } from "lucide-react";
+import { Code2, Code, Share, X, Cross, TriangleAlert } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -253,43 +253,63 @@ export default function StorageVisualizer({
       {/* Upper Bar */}
       <div className="flex max-w-full justify-between items-center p-2 border-b border-green-500/50 bg-green-900/20">
         <div className="flex max-w-full truncate items-center gap-2">
-          <Code className="text-green-500 h-4 w-4" />
+          <Code2 className="text-green-500 h-4 w-4" />
           <span className="text-green-500 text-sm font-bold">
             {chainId !== undefined && address !== undefined
-              ? `${contractName} (Addr: ${address.slice(0, 10)}...${address.slice(-8)} | Chain Id: ${chainId})`
+              ? `${contractName} (Addr: ${address.slice(
+                  0,
+                  10
+                )}...${address.slice(-8)} | Chain Id: ${chainId})`
               : contractName}
           </span>
         </div>
         <div className="flex gap-2">
           {chainId !== undefined && address !== undefined && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() =>
-                    navigator.clipboard.writeText(
-                      `https://evm-storage.codes/?address=${address}&chainId=${chainId}`
-                    )
-                  }
-                  className="h-6 w-6 text-green-500 hover:bg-green-900/30 hover:text-green-500 hover:rounded"
-                >
-                  <Share className="h-3 w-3" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent className="bg-black border-green-500 border text-green-500 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
-                Share
-              </TooltipContent>
-            </Tooltip>
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() =>
+                      window.open(
+                        `https://repo.sourcify.dev/${chainId.toString()}/${address}`,
+                        "_blank"
+                      )
+                    }
+                    className="h-6 w-6 text-green-500 hover:bg-green-900/30 hover:text-green-500 hover:rounded"
+                  >
+                    <Code className="h-3 w-3" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="bg-black border-green-500 border text-green-500 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
+                  View code on Sourcify.eth
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() =>
+                      navigator.clipboard.writeText(
+                        `https://evm-storage.codes/?address=${address}&chainId=${chainId}`
+                      )
+                    }
+                    className="h-6 w-6 text-green-500 hover:bg-green-900/30 hover:text-green-500 hover:rounded"
+                  >
+                    <Share className="h-3 w-3" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="bg-black border-green-500 border text-green-500 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
+                  Share
+                </TooltipContent>
+              </Tooltip>
+            </>
           )}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <ComparisonWizardButton />
-            </TooltipTrigger>
-            <TooltipContent className="bg-black border-green-500 border text-green-500 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
-              Compare
-            </TooltipContent>
-          </Tooltip>
+          <ComparisonWizardButton />
+
           {/* Add Contract Dialog */}
           <Dialog
             open={isAddContractDialogOpen}
