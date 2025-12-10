@@ -80,6 +80,7 @@ export default function UploadWizardButton({
   const [evmVersion, setEvmVersion] = useState<string | undefined>(undefined);
   const [optimizationEnabled, setOptimizationEnabled] =
     useState<boolean>(false);
+  const [viaIREnabled, setViaIREnabled] = useState<boolean>(false);
   const [numRuns, setNumRuns] = useState<number | undefined>(undefined);
   const [solcInput, setSolcInput] = useState<SolcInput | undefined>(undefined);
   const [solcOutput, setSolcOutput] = useState<SolcOutput | undefined>(
@@ -92,6 +93,19 @@ export default function UploadWizardButton({
     Record<string, string>
   >({});
 
+  // viaIR management
+  function isViaIRSupported(version: string) {
+    if (!compilerVersion) return false;
+    return versions.compare(version, MIN_VIA_IR_VERSION, ">=");
+  }
+
+  // Reactively set compiler options based on selected compiler version
+  useEffect(() => {
+    if (!isViaIRSupported(compilerVersion)) {
+      setViaIREnabled(false);
+    }
+  }, [compilerVersion]);
+
   // Storage layout loader management
   const [selectedContract, setSelectedContract] = useState<string | undefined>(
     undefined
@@ -99,20 +113,6 @@ export default function UploadWizardButton({
   const [storageLayoutLoadingError, setStorageLayoutLoadingError] =
     useState<string>("");
 
-  // viaIR management
-  const [viaIREnabled, setViaIREnabled] = useState(false);
-
-  function isViaIRSupported(version: string) {
-    if (!compilerVersion) return false;
-    return versions.compare(version, MIN_VIA_IR_VERSION, ">=");
-  }
-
-  // Effect to reset viaIR when compiler version changes
-  useEffect(() => {
-    if (!isViaIRSupported(compilerVersion)) {
-      setViaIREnabled(false);
-    }
-  }, [compilerVersion]);
 
   // Function to reset wizard state when the dialog is closed.
   function resetWizardState() {
@@ -123,6 +123,7 @@ export default function UploadWizardButton({
     setAdvancedOptionsEnabled(false);
     setEvmVersion(undefined);
     setOptimizationEnabled(false);
+    setViaIREnabled(false);
     setNumRuns(undefined);
     setSolcInput(undefined);
     setSolcOutput(undefined);
@@ -130,7 +131,6 @@ export default function UploadWizardButton({
     setCompiledContracts({});
     setSelectedContract(undefined);
     setStorageLayoutLoadingError("");
-    setViaIREnabled(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -319,7 +319,7 @@ export default function UploadWizardButton({
       const response = await fetch("/api/get_namespaced_input", {
         method: "POST",
         headers: { "Content-Type": "application/octet-stream" },
-        body: _compressedBodyRequest,
+        body: new Uint8Array(_compressedBodyRequest),
       });
       if (!response.ok) {
         throw new Error((await response.json()).message);
@@ -413,7 +413,7 @@ export default function UploadWizardButton({
       const response = await fetch("/api/extract_storage_layout", {
         method: "POST",
         headers: { "Content-Type": "application/octet-stream" },
-        body: _compressedBodyRequest,
+        body: new Uint8Array(_compressedBodyRequest),
       });
       if (!response.ok) {
         throw new Error((await response.json()).message);
