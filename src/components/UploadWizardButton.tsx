@@ -20,6 +20,7 @@ import {
 import {
   EVM_VERSIONS,
   MIN_COMPATIBLE_SOLC_VERSION,
+  MIN_VIA_IR_VERSION,
   MIN_NAMESPACED_COMPATIBLE_SOLC_VERSION,
   BROTLI_QUALITY,
 } from "@/lib/constants";
@@ -98,6 +99,21 @@ export default function UploadWizardButton({
   const [storageLayoutLoadingError, setStorageLayoutLoadingError] =
     useState<string>("");
 
+  // viaIR management
+  const [viaIREnabled, setViaIREnabled] = useState(false);
+
+  function isViaIRSupported(version: string) {
+    if (!compilerVersion) return false;
+    return versions.compare(version, MIN_VIA_IR_VERSION, ">=");
+  }
+
+  // Effect to reset viaIR when compiler version changes
+  useEffect(() => {
+    if (!isViaIRSupported(compilerVersion)) {
+      setViaIREnabled(false);
+    }
+  }, [compilerVersion]);
+
   // Function to reset wizard state when the dialog is closed.
   function resetWizardState() {
     setWizardStep(WizardStep.SELECT_COMPILER);
@@ -114,6 +130,7 @@ export default function UploadWizardButton({
     setCompiledContracts({});
     setSelectedContract(undefined);
     setStorageLayoutLoadingError("");
+    setViaIREnabled(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -225,6 +242,10 @@ export default function UploadWizardButton({
           enabled: optimizationEnabled,
           runs: numRuns,
         };
+      }
+      if (viaIREnabled) {
+        // @ts-ignore
+        _solcInput.settings.viaIR = true;
       }
     }
     setSolcInput(_solcInput);
@@ -612,11 +633,11 @@ export default function UploadWizardButton({
                       type="checkbox"
                       checked={optimizationEnabled}
                       onChange={(e) => setOptimizationEnabled(e.target.checked)}
-                      id="advanced-options-checkbox"
+                      id="optimizer-checkbox"
                       className="h-4 w-4 not-checked:appearance-none rounded border border-green-500 accent-green-500"
                     />
                     <label
-                      htmlFor="advanced-options-checkbox"
+                      htmlFor="optimizer-checkbox"
                       className="text-green-500"
                     >
                       Optimization
@@ -638,6 +659,27 @@ export default function UploadWizardButton({
                       }}
                     />
                   </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={viaIREnabled}
+                    onChange={(e) => setViaIREnabled(e.target.checked)}
+                    id="via-ir-checkbox"
+                    className={`h-4 w-4 not-checked:appearance-none rounded border border-green-500 accent-green-500 ${!isViaIRSupported(compilerVersion) && 'cursor-not-allowed'}`}
+                    disabled={!isViaIRSupported(compilerVersion)}
+                  />
+                  <label
+                    htmlFor="via-ir-checkbox"
+                    className={`text-green-500 ${!isViaIRSupported(compilerVersion) && 'cursor-not-allowed'}`}
+                  >
+                    Enable via-IR
+                    {!isViaIRSupported(compilerVersion) && (
+                      <span className="text-red-500 text-sm mt-1">
+                        &nbsp;&nbsp;available for versions &gt;= 0.8.13
+                      </span>
+                    )}
+                  </label>
                 </div>
               </div>
             )}
