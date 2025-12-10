@@ -98,8 +98,6 @@ export default function UploadWizardButton({
     if (!compilerVersion) return false;
     return versions.compare(version, MIN_VIA_IR_VERSION, ">=");
   }
-
-  // Reactively set compiler options based on selected compiler version
   useEffect(() => {
     if (!isViaIRSupported(compilerVersion)) {
       setViaIREnabled(false);
@@ -112,7 +110,6 @@ export default function UploadWizardButton({
   );
   const [storageLayoutLoadingError, setStorageLayoutLoadingError] =
     useState<string>("");
-
 
   // Function to reset wizard state when the dialog is closed.
   function resetWizardState() {
@@ -328,9 +325,7 @@ export default function UploadWizardButton({
       // Parse the response
       const _arrayBuffer = await response.arrayBuffer();
       const _textDecoder = new TextDecoder();
-      const _namespacedInput = JSON.parse(
-        _textDecoder.decode(_arrayBuffer)
-      );
+      const _namespacedInput = JSON.parse(_textDecoder.decode(_arrayBuffer));
 
       // Compile contract using compiler worker
       const worker = new Worker("/dynSolcWorkerBundle.js");
@@ -451,7 +446,7 @@ export default function UploadWizardButton({
           id: 0,
           storageLayout: storageLayout!,
           chainId: undefined,
-          address: undefined
+          address: undefined,
         },
       ];
     });
@@ -660,27 +655,23 @@ export default function UploadWizardButton({
                     />
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={viaIREnabled}
-                    onChange={(e) => setViaIREnabled(e.target.checked)}
-                    id="via-ir-checkbox"
-                    className={`h-4 w-4 not-checked:appearance-none rounded border border-green-500 accent-green-500 ${!isViaIRSupported(compilerVersion) && 'cursor-not-allowed'}`}
-                    disabled={!isViaIRSupported(compilerVersion)}
-                  />
-                  <label
-                    htmlFor="via-ir-checkbox"
-                    className={`text-green-500 ${!isViaIRSupported(compilerVersion) && 'cursor-not-allowed'}`}
-                  >
-                    Enable via-IR
-                    {!isViaIRSupported(compilerVersion) && (
-                      <span className="text-red-500 text-sm mt-1">
-                        &nbsp;&nbsp;available for versions &gt;= 0.8.13
-                      </span>
-                    )}
-                  </label>
-                </div>
+                {isViaIRSupported(compilerVersion) && (
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={viaIREnabled}
+                      onChange={(e) => setViaIREnabled(e.target.checked)}
+                      id="via-ir-checkbox"
+                      className={`h-4 w-4 not-checked:appearance-none rounded border border-green-500 accent-green-500`}
+                    />
+                    <label
+                      htmlFor="via-ir-checkbox"
+                      className={`text-green-500`}
+                    >
+                      via-IR
+                    </label>
+                  </div>
+                )}
               </div>
             )}
 
