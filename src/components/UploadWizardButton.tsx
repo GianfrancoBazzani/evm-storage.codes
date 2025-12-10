@@ -20,6 +20,7 @@ import {
 import {
   EVM_VERSIONS,
   MIN_COMPATIBLE_SOLC_VERSION,
+  MIN_VIA_IR_VERSION,
   MIN_NAMESPACED_COMPATIBLE_SOLC_VERSION,
   BROTLI_QUALITY,
 } from "@/lib/constants";
@@ -79,6 +80,7 @@ export default function UploadWizardButton({
   const [evmVersion, setEvmVersion] = useState<string | undefined>(undefined);
   const [optimizationEnabled, setOptimizationEnabled] =
     useState<boolean>(false);
+  const [viaIREnabled, setViaIREnabled] = useState<boolean>(false);
   const [numRuns, setNumRuns] = useState<number | undefined>(undefined);
   const [solcInput, setSolcInput] = useState<SolcInput | undefined>(undefined);
   const [solcOutput, setSolcOutput] = useState<SolcOutput | undefined>(
@@ -90,6 +92,17 @@ export default function UploadWizardButton({
   const [compiledContracts, setCompiledContracts] = useState<
     Record<string, string>
   >({});
+
+  // viaIR management
+  function isViaIRSupported(version: string) {
+    if (!compilerVersion) return false;
+    return versions.compare(version, MIN_VIA_IR_VERSION, ">=");
+  }
+  useEffect(() => {
+    if (!isViaIRSupported(compilerVersion)) {
+      setViaIREnabled(false);
+    }
+  }, [compilerVersion]);
 
   // Storage layout loader management
   const [selectedContract, setSelectedContract] = useState<string | undefined>(
@@ -107,6 +120,7 @@ export default function UploadWizardButton({
     setAdvancedOptionsEnabled(false);
     setEvmVersion(undefined);
     setOptimizationEnabled(false);
+    setViaIREnabled(false);
     setNumRuns(undefined);
     setSolcInput(undefined);
     setSolcOutput(undefined);
@@ -226,6 +240,10 @@ export default function UploadWizardButton({
           runs: numRuns,
         };
       }
+      if (viaIREnabled) {
+        // @ts-ignore
+        _solcInput.settings.viaIR = true;
+      }
     }
     setSolcInput(_solcInput);
 
@@ -298,7 +316,7 @@ export default function UploadWizardButton({
       const response = await fetch("/api/get_namespaced_input", {
         method: "POST",
         headers: { "Content-Type": "application/octet-stream" },
-        body: _compressedBodyRequest,
+        body: new Uint8Array(_compressedBodyRequest),
       });
       if (!response.ok) {
         throw new Error((await response.json()).message);
@@ -307,9 +325,7 @@ export default function UploadWizardButton({
       // Parse the response
       const _arrayBuffer = await response.arrayBuffer();
       const _textDecoder = new TextDecoder();
-      const _namespacedInput = JSON.parse(
-        _textDecoder.decode(_arrayBuffer)
-      );
+      const _namespacedInput = JSON.parse(_textDecoder.decode(_arrayBuffer));
 
       // Compile contract using compiler worker
       const worker = new Worker("/dynSolcWorkerBundle.js");
@@ -392,7 +408,7 @@ export default function UploadWizardButton({
       const response = await fetch("/api/extract_storage_layout", {
         method: "POST",
         headers: { "Content-Type": "application/octet-stream" },
-        body: _compressedBodyRequest,
+        body: new Uint8Array(_compressedBodyRequest),
       });
       if (!response.ok) {
         throw new Error((await response.json()).message);
@@ -430,7 +446,7 @@ export default function UploadWizardButton({
           id: 0,
           storageLayout: storageLayout!,
           chainId: undefined,
-          address: undefined
+          address: undefined,
         },
       ];
     });
@@ -612,11 +628,11 @@ export default function UploadWizardButton({
                       type="checkbox"
                       checked={optimizationEnabled}
                       onChange={(e) => setOptimizationEnabled(e.target.checked)}
-                      id="advanced-options-checkbox"
+                      id="optimizer-checkbox"
                       className="h-4 w-4 not-checked:appearance-none rounded border border-green-500 accent-green-500"
                     />
                     <label
-                      htmlFor="advanced-options-checkbox"
+                      htmlFor="optimizer-checkbox"
                       className="text-green-500"
                     >
                       Optimization
@@ -639,6 +655,23 @@ export default function UploadWizardButton({
                     />
                   </div>
                 </div>
+                {isViaIRSupported(compilerVersion) && (
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={viaIREnabled}
+                      onChange={(e) => setViaIREnabled(e.target.checked)}
+                      id="via-ir-checkbox"
+                      className={`h-4 w-4 not-checked:appearance-none rounded border border-green-500 accent-green-500`}
+                    />
+                    <label
+                      htmlFor="via-ir-checkbox"
+                      className={`text-green-500`}
+                    >
+                      via-IR
+                    </label>
+                  </div>
+                )}
               </div>
             )}
 

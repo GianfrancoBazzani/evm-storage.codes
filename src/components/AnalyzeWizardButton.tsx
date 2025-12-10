@@ -378,7 +378,7 @@ export default function AnalyzeWizardButton({
         headers: {
           "Content-Type": "application/octet-stream",
         },
-        body: _compressedBodyRequest,
+        body: new Uint8Array(_compressedBodyRequest),
       });
       if (!response.ok) {
         throw new Error((await response.json()).message);
@@ -475,7 +475,7 @@ export default function AnalyzeWizardButton({
         headers: {
           "Content-Type": "application/octet-stream",
         },
-        body: _compressedBodyRequest,
+        body: new Uint8Array(_compressedBodyRequest),
       });
       if (!response.ok) {
         throw new Error((await response.json()).message);

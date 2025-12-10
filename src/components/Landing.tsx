@@ -85,7 +85,7 @@ export default function Landing() {
                   rel="noopener noreferrer"
                   className="underline"
                 >
-                  {example.name}: {example.address.slice(0, 10)}...$
+                  {example.name}: {example.address.slice(0, 10)}...
                   {example.address.slice(-8)} (Chain ID: {example.chainId})
                 </a>
               </li>
