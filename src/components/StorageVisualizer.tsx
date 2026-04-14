@@ -56,7 +56,8 @@ export default function StorageVisualizer({
 
   // Share button "Copied!" confirmation (forces tooltip open for 2s after copy)
   const [copied, setCopied] = useState(false);
-  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const [shareTooltipOpen, setShareTooltipOpen] = useState(false);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   // Close Visualizer
   function handleClose() {
@@ -291,7 +292,7 @@ export default function StorageVisualizer({
                 </TooltipContent>
               </Tooltip>
 
-              <Tooltip open={copied || undefined}>
+              <Tooltip open={copied || shareTooltipOpen} onOpenChange={setShareTooltipOpen}>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
@@ -301,7 +302,7 @@ export default function StorageVisualizer({
                         await navigator.clipboard.writeText(
                           `https://evm-storage.codes/?address=${address}&chainId=${chainId}`
                         );
-                        clearTimeout(copyTimeoutRef.current);
+                        if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
                         setCopied(true);
                         copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
                       } catch { /* clipboard unavailable */ }
