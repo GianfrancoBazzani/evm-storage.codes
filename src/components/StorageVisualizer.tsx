@@ -56,7 +56,7 @@ export default function StorageVisualizer({
 
   // Share button "Copied!" confirmation (forces tooltip open for 2s after copy)
   const [copied, setCopied] = useState(false);
-  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   // Close Visualizer
   function handleClose() {
