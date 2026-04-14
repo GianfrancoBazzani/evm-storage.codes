@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useRef, useState } from "react";
 import { Code2, Code, Share, X, Cross, TriangleAlert } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,6 +53,11 @@ export default function StorageVisualizer({
 
   // Parent dialog controlled state
   const [isAddContractDialogOpen, setAddContractDialogOpen] = useState(false);
+
+  // Share button "Copied!" confirmation (forces tooltip open for 2s after copy)
+  const [copied, setCopied] = useState(false);
+  const [shareTooltipOpen, setShareTooltipOpen] = useState(false);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   // Close Visualizer
   function handleClose() {
@@ -287,23 +292,28 @@ export default function StorageVisualizer({
                 </TooltipContent>
               </Tooltip>
 
-              <Tooltip>
+              <Tooltip open={copied || shareTooltipOpen} onOpenChange={setShareTooltipOpen}>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() =>
-                      navigator.clipboard.writeText(
-                        `https://evm-storage.codes/?address=${address}&chainId=${chainId}`
-                      )
-                    }
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(
+                          `https://evm-storage.codes/?address=${address}&chainId=${chainId}`
+                        );
+                        if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+                        setCopied(true);
+                        copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
+                      } catch { /* clipboard unavailable */ }
+                    }}
                     className="h-6 w-6 text-green-500 hover:bg-green-900/30 hover:text-green-500 hover:rounded"
                   >
                     <Share className="h-3 w-3" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent className="bg-black border-green-500 border text-green-500 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
-                  Share
+                  {copied ? "Copied!" : "Share"}
                 </TooltipContent>
               </Tooltip>
             </>
