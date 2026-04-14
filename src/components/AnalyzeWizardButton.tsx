@@ -232,7 +232,7 @@ export default function AnalyzeWizardButton({
           <>
             {`Contract at ${data.address} on chain id ${data.chainId} not verified on Sourcify. Please verify your contract using the `}
             <a
-              href="https://sourcify.dev/#/verifier"
+              href="https://verify.sourcify.dev/"
               target="_blank"
               rel="noopener noreferrer"
               className="text-green-500 underline"
