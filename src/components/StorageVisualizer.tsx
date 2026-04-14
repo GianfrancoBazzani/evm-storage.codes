@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useRef, useState } from "react";
 import { Code2, Code, Share, X, Cross, TriangleAlert } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,6 +56,7 @@ export default function StorageVisualizer({
 
   // Share button "Copied!" confirmation (forces tooltip open for 2s after copy)
   const [copied, setCopied] = useState(false);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Close Visualizer
   function handleClose() {
@@ -296,11 +297,14 @@ export default function StorageVisualizer({
                     variant="ghost"
                     size="icon"
                     onClick={async () => {
-                      await navigator.clipboard.writeText(
-                        `https://evm-storage.codes/?address=${address}&chainId=${chainId}`
-                      );
-                      setCopied(true);
-                      setTimeout(() => setCopied(false), 2000);
+                      try {
+                        await navigator.clipboard.writeText(
+                          `https://evm-storage.codes/?address=${address}&chainId=${chainId}`
+                        );
+                        clearTimeout(copyTimeoutRef.current);
+                        setCopied(true);
+                        copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
+                      } catch { /* clipboard unavailable */ }
                     }}
                     className="h-6 w-6 text-green-500 hover:bg-green-900/30 hover:text-green-500 hover:rounded"
                   >
