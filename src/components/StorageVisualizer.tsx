@@ -54,6 +54,9 @@ export default function StorageVisualizer({
   // Parent dialog controlled state
   const [isAddContractDialogOpen, setAddContractDialogOpen] = useState(false);
 
+  // Share button "Copied!" confirmation (forces tooltip open for 2s after copy)
+  const [copied, setCopied] = useState(false);
+
   // Close Visualizer
   function handleClose() {
     setStorageLayouts((prevLayouts) => {
@@ -287,23 +290,25 @@ export default function StorageVisualizer({
                 </TooltipContent>
               </Tooltip>
 
-              <Tooltip>
+              <Tooltip open={copied || undefined}>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() =>
-                      navigator.clipboard.writeText(
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(
                         `https://evm-storage.codes/?address=${address}&chainId=${chainId}`
-                      )
-                    }
+                      );
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
                     className="h-6 w-6 text-green-500 hover:bg-green-900/30 hover:text-green-500 hover:rounded"
                   >
                     <Share className="h-3 w-3" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent className="bg-black border-green-500 border text-green-500 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
-                  Share
+                  {copied ? "Copied!" : "Share"}
                 </TooltipContent>
               </Tooltip>
             </>
