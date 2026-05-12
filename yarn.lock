@@ -3708,12 +3708,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@upstash/redis@npm:^1.35.7":
-  version: 1.35.7
-  resolution: "@upstash/redis@npm:1.35.7"
+"@upstash/redis@npm:^1.38.0":
+  version: 1.38.0
+  resolution: "@upstash/redis@npm:1.38.0"
   dependencies:
     uncrypto: "npm:^0.1.3"
-  checksum: 8fbfec787022e6919e6a20088727e99ef9dcab76989a8b6fb24f3e42201dd8187d987099d7589508ba0f414647d85e006197037ce205caba29be43319335abb2
+  checksum: 02ebad2f2cfe089b6ede9ab818e679840a2006e56ad440c36fdf11f04ce23b024e14cc11dd812816de9ad6dea83c5cfabe3a9f2d81f7aa8e8f464746baf586f3
   languageName: node
   linkType: hard
 
@@ -6183,7 +6183,7 @@ __metadata:
     "@types/node": "npm:^22.19.2"
     "@types/react": "npm:^19.2.7"
     "@types/react-dom": "npm:^19.2.3"
-    "@upstash/redis": "npm:^1.35.7"
+    "@upstash/redis": "npm:^1.38.0"
     "@vercel/analytics": "npm:^1.6.1"
     "@vercel/node": "npm:^5.5.15"
     "@vitejs/plugin-react-swc": "npm:^3.11.0"
