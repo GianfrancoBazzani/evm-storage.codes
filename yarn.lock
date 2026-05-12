@@ -6204,7 +6204,7 @@ __metadata:
     react-dom: "npm:^19.2.1"
     solc: "npm:^0.8.31"
     tailwind-merge: "npm:^3.4.0"
-    tailwindcss: "npm:^4.1.17"
+    tailwindcss: "npm:^4.3.0"
     ts-node: "npm:^10.9.2"
     tw-animate-css: "npm:^1.4.0"
     typescript: "npm:^5.9.3"
@@ -9297,10 +9297,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tailwindcss@npm:4.1.17, tailwindcss@npm:^4.1.17":
+"tailwindcss@npm:4.1.17":
   version: 4.1.17
   resolution: "tailwindcss@npm:4.1.17"
   checksum: 1fecf618ba9895e068e5a6d842b978f56a815bc849a28338cebbcb07b13df763715c2f8848def938403c73d59f08ffff33a4b83a977a9e38fa56adc60d1d56c8
+  languageName: node
+  linkType: hard
+
+"tailwindcss@npm:^4.3.0":
+  version: 4.3.0
+  resolution: "tailwindcss@npm:4.3.0"
+  checksum: 4cde389ee5e9132e7ef90e4c1d05978d52821761a00700c18b7d46d325881086f0a9c9ec7f616929ecd6e26109c41913538883e066c6dd4bd993debbbbc99084
   languageName: node
   linkType: hard
 
