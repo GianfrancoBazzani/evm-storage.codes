@@ -1,5 +1,5 @@
 import { useContext, useRef, useState } from "react";
-import { Code2, Code, Share, X, Cross, TriangleAlert } from "lucide-react";
+import { Code2, Code, Share, X, Cross, TriangleAlert, Braces } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,6 +8,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { StorageLayoutsContext } from "../App";
 import {
   Dialog,
@@ -23,6 +28,7 @@ import ComparisonWizardButton from "@/components/ComparisonWizardButton";
 import ColorHash from "color-hash";
 import { normalizeUint256Literal } from "@/lib/integer-literals";
 import { erc7201 } from "@/lib/erc7201";
+import { buildExport } from "@/lib/storage-layout-export";
 
 import type { StorageLayout, StorageItem } from "@openzeppelin/upgrades-core";
 
@@ -49,7 +55,7 @@ export default function StorageVisualizer({
   if (!storageLayoutsContext) {
     throw new Error("StorageLayoutsContext is undefined");
   }
-  const { setStorageLayouts } = storageLayoutsContext;
+  const { storageLayouts: allLayouts, setStorageLayouts } = storageLayoutsContext;
 
   // Parent dialog controlled state
   const [isAddContractDialogOpen, setAddContractDialogOpen] = useState(false);
@@ -58,6 +64,44 @@ export default function StorageVisualizer({
   const [copied, setCopied] = useState(false);
   const [shareTooltipOpen, setShareTooltipOpen] = useState(false);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  // Copy-JSON button: controlled Tabs + parallel copy/tooltip/popover state
+  const [activeTab, setActiveTab] = useState<string>("Root layout");
+  const [layoutCopied, setLayoutCopied] = useState(false);
+  const [layoutTooltipOpen, setLayoutTooltipOpen] = useState(false);
+  const [layoutPopoverOpen, setLayoutPopoverOpen] = useState(false);
+  const layoutCopyTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  async function handleCopyJson(mode: "full" | "tab" | "all") {
+    const text =
+      mode === "all"
+        ? buildExport({ mode: "all", layouts: allLayouts })
+        : buildExport({
+            mode,
+            contractName,
+            chainId,
+            address,
+            storageLayout,
+            activeTab,
+          });
+
+    // Flip to "Copied!" before closing the popover so the tooltip's controlled
+    // `open` prop stays true across the popover→tooltip handoff (otherwise
+    // there's a microtask gap where both flags are false and the tooltip
+    // closes without re-opening).
+    if (layoutCopyTimeoutRef.current) clearTimeout(layoutCopyTimeoutRef.current);
+    setLayoutCopied(true);
+    setLayoutPopoverOpen(false);
+    layoutCopyTimeoutRef.current = setTimeout(() => setLayoutCopied(false), 3000);
+
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // Clipboard unavailable — undo the optimistic "Copied!" state.
+      if (layoutCopyTimeoutRef.current) clearTimeout(layoutCopyTimeoutRef.current);
+      setLayoutCopied(false);
+    }
+  }
 
   // Close Visualizer
   function handleClose() {
@@ -304,7 +348,7 @@ export default function StorageVisualizer({
                         );
                         if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
                         setCopied(true);
-                        copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
+                        copyTimeoutRef.current = setTimeout(() => setCopied(false), 3000);
                       } catch { /* clipboard unavailable */ }
                     }}
                     className="h-6 w-6 text-green-500 hover:bg-green-900/30 hover:text-green-500 hover:rounded"
@@ -318,6 +362,59 @@ export default function StorageVisualizer({
               </Tooltip>
             </>
           )}
+          <Popover open={layoutPopoverOpen} onOpenChange={setLayoutPopoverOpen}>
+            <Tooltip
+              open={layoutCopied || layoutTooltipOpen}
+              onOpenChange={setLayoutTooltipOpen}
+            >
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-green-500 hover:bg-green-900/30 hover:text-green-500 hover:rounded"
+                  >
+                    <Braces className="h-3 w-3" />
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent className="bg-black border-green-500 border text-green-500 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
+                {layoutCopied ? "Copied!" : "Copy Storage Layout"}
+              </TooltipContent>
+            </Tooltip>
+            <PopoverContent
+              align="end"
+              className="bg-black border-green-500 border text-green-500 p-1 rounded-md shadow-md text-xs w-56"
+            >
+              <div className="flex flex-col">
+                <Button
+                  variant="ghost"
+                  onClick={() => handleCopyJson("full")}
+                  className="w-full justify-start h-8 text-xs text-green-500 hover:bg-green-900/30 hover:text-green-500"
+                >
+                  Copy full layout
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => handleCopyJson("tab")}
+                  className="w-full justify-start h-8 text-xs text-green-500 hover:bg-green-900/30 hover:text-green-500"
+                >
+                  <span className="truncate max-w-[180px]">
+                    Copy current tab ({activeTab})
+                  </span>
+                </Button>
+                {allLayouts.length >= 2 && (
+                  <Button
+                    variant="ghost"
+                    onClick={() => handleCopyJson("all")}
+                    className="w-full justify-start h-8 text-xs text-green-500 hover:bg-green-900/30 hover:text-green-500"
+                  >
+                    Copy all open contracts
+                  </Button>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
           <ComparisonWizardButton />
 
           {/* Add Contract Dialog */}
@@ -387,7 +484,7 @@ export default function StorageVisualizer({
       </div>
 
       {/* Tabs*/}
-      <Tabs defaultValue="Root layout" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div
           className="border-b border-green-500/30 bg-green-900/10 overflow-x-auto
                   minimal-h-scrollbar-green
