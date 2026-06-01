@@ -1,5 +1,9 @@
 import type { StorageLayout, StorageItem } from "@openzeppelin/upgrades-core";
 import { erc7201 } from "@/lib/erc7201";
+import { ROOT_LAYOUT_TAB } from "@/lib/constants";
+
+const EXPORT_SCHEMA_VERSION = "evm-storage.codes/storage-layout-export@1";
+const JSON_INDENT_SPACES = 2;
 
 // Runtime type entries carry untyped solc fields (encoding, key, value, base)
 // that the OZ TypeItem interface doesn't declare. We preserve them verbatim.
@@ -72,6 +76,15 @@ function omitUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
   return out;
 }
 
+// Derives the absolute ERC-7201 base slot for a "erc7201:<id>" namespace key.
+// Returns undefined for non-namespace strings (e.g. custom-encoded namespaces).
+function deriveNamespaceBaseSlot(namespace: string): string | undefined {
+  const prefix = "erc7201:";
+  if (!namespace.startsWith(prefix)) return undefined;
+  const id = namespace.slice(prefix.length).trim();
+  return id.length > 0 ? erc7201(id) : undefined;
+}
+
 function buildWrapper(
   entry: LayoutEntry,
   mode: "full" | "tab",
@@ -85,7 +98,13 @@ function buildWrapper(
     const namespacesRaw = storageLayout.namespaces;
     const namespaces = namespacesRaw
       ? Object.fromEntries(
-          Object.entries(namespacesRaw).map(([k, v]) => [k, slimStorageItems(v)]),
+          Object.entries(namespacesRaw).map(([k, v]) => [
+            k,
+            omitUndefined({
+              baseSlot: deriveNamespaceBaseSlot(k),
+              storage: slimStorageItems(v),
+            }),
+          ]),
         )
       : undefined;
 
@@ -97,6 +116,7 @@ function buildWrapper(
     const types = pickReferencedTypes(allItems, allTypes);
 
     return omitUndefined({
+      schemaVersion: EXPORT_SCHEMA_VERSION,
       contractName,
       chainId,
       address,
@@ -110,24 +130,26 @@ function buildWrapper(
   }
 
   // mode === "tab"
-  const isRoot = activeTab === "Root layout";
-  const rawItems = isRoot
-    ? storageLayout.storage ?? []
-    : storageLayout.namespaces?.[activeTab] ?? [];
+  const isRoot = activeTab === ROOT_LAYOUT_TAB;
+  const namespaceItems = isRoot ? undefined : storageLayout.namespaces?.[activeTab];
+  if (!isRoot && namespaceItems === undefined) {
+    throw new Error(`Unknown storage layout tab: ${activeTab}`);
+  }
+  const rawItems = isRoot ? storageLayout.storage ?? [] : namespaceItems!;
   const items = slimStorageItems(rawItems);
   const types = pickReferencedTypes(rawItems, allTypes);
 
   // For namespace tabs, derive baseSlot from the ERC-7201 id portion.
-  // The namespace name follows the convention "erc7201:<id>".
   let baseSlot: string | undefined = storageLayout.baseSlot;
   let namespace: string | undefined;
   if (!isRoot) {
     namespace = activeTab;
-    const idPart = activeTab.split(":")[1];
-    if (idPart) baseSlot = erc7201(idPart);
+    const derived = deriveNamespaceBaseSlot(activeTab);
+    if (derived) baseSlot = derived;
   }
 
   return omitUndefined({
+    schemaVersion: EXPORT_SCHEMA_VERSION,
     contractName,
     chainId,
     address,
@@ -142,8 +164,14 @@ function buildWrapper(
 
 export function buildExport(opts: SingleOpts | AllOpts): string {
   if (opts.mode === "all") {
-    const contracts = opts.layouts.map((l) => buildWrapper(l, "full", "Root layout"));
-    return JSON.stringify({ contracts }, null, 2);
+    const contracts = opts.layouts.map((l) =>
+      buildWrapper(l, "full", ROOT_LAYOUT_TAB),
+    );
+    return JSON.stringify(
+      { schemaVersion: EXPORT_SCHEMA_VERSION, contracts },
+      null,
+      JSON_INDENT_SPACES,
+    );
   }
 
   const entry: LayoutEntry = {
@@ -153,5 +181,5 @@ export function buildExport(opts: SingleOpts | AllOpts): string {
     storageLayout: opts.storageLayout,
   };
   const wrapper = buildWrapper(entry, opts.mode, opts.activeTab);
-  return JSON.stringify(wrapper, null, 2);
+  return JSON.stringify(wrapper, null, JSON_INDENT_SPACES);
 }

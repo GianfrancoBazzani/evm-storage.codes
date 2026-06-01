@@ -1,4 +1,4 @@
-import { useContext, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { Code2, Code, Share, X, Cross, TriangleAlert, Braces } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ import ColorHash from "color-hash";
 import { normalizeUint256Literal } from "@/lib/integer-literals";
 import { erc7201 } from "@/lib/erc7201";
 import { buildExport } from "@/lib/storage-layout-export";
+import { ROOT_LAYOUT_TAB } from "@/lib/constants";
 
 import type { StorageLayout, StorageItem } from "@openzeppelin/upgrades-core";
 
@@ -66,11 +67,18 @@ export default function StorageVisualizer({
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   // Copy-JSON button: controlled Tabs + parallel copy/tooltip/popover state
-  const [activeTab, setActiveTab] = useState<string>("Root layout");
+  const [activeTab, setActiveTab] = useState<string>(ROOT_LAYOUT_TAB);
   const [layoutCopied, setLayoutCopied] = useState(false);
   const [layoutTooltipOpen, setLayoutTooltipOpen] = useState(false);
   const [layoutPopoverOpen, setLayoutPopoverOpen] = useState(false);
   const layoutCopyTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+      if (layoutCopyTimeoutRef.current) clearTimeout(layoutCopyTimeoutRef.current);
+    };
+  }, []);
 
   async function handleCopyJson(mode: "full" | "tab" | "all") {
     const text =
@@ -276,7 +284,7 @@ export default function StorageVisualizer({
     getStorageLayoutWrapper(
       storageLayout.storage,
       storageLayout,
-      "Root layout",
+      ROOT_LAYOUT_TAB,
       baseSlotNormalized,
       false
     )

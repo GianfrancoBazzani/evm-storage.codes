@@ -13,3 +13,4 @@ export const EVM_VERSIONS = [
   "constantinople",
 ];
 export const BROTLI_QUALITY = 9;
+export const ROOT_LAYOUT_TAB = "Root layout";
