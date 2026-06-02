@@ -31,6 +31,13 @@ type AllOpts = {
   layouts: LayoutEntry[];
 };
 
+/**
+ * Strips compiler-internal fields from each storage item.
+ *
+ * Removes `astId` and `src`, which are solc AST pointers
+ * (source file, offset, length) that mean nothing to a
+ * clipboard consumer. Everything else is preserved verbatim.
+ */
 export function slimStorageItems(items: StorageItem[]) {
   return items.map((item) => {
     const copy: Record<string, unknown> = { ...item };
@@ -40,6 +47,16 @@ export function slimStorageItems(items: StorageItem[]) {
   });
 }
 
+/**
+ * Returns only the type entries reachable from the given items.
+ *
+ * The raw `types` dictionary holds every type solc emitted for
+ * the whole compilation unit, most of it unreferenced here. This
+ * does a breadth-first walk starting from each item's `type`,
+ * following struct `members`, plus mapping `key`/`value`, array
+ * `base`, and UDVT `underlying`. The result is minimal but
+ * complete: every type id any copied item points to resolves.
+ */
 export function pickReferencedTypes(
   items: StorageItem[],
   allTypes: RawTypes,
@@ -68,6 +85,13 @@ export function pickReferencedTypes(
   return out;
 }
 
+/**
+ * Returns a shallow copy with all `undefined`-valued keys dropped.
+ *
+ * Keeps optional fields (chainId, address, baseSlot, namespaces)
+ * out of the JSON entirely when they have no value, instead of
+ * serializing them as explicit nulls.
+ */
 function omitUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
   const out: Partial<T> = {};
   for (const k in obj) {
@@ -76,8 +100,15 @@ function omitUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
   return out;
 }
 
-// Derives the absolute ERC-7201 base slot for a "erc7201:<id>" namespace key.
-// Returns undefined for non-namespace strings (e.g. custom-encoded namespaces).
+/**
+ * Derives the absolute ERC-7201 base slot for a namespace key.
+ *
+ * Expects the "erc7201:<id>" convention and computes
+ * keccak256(keccak256(id) - 1) & ~0xff over the id portion.
+ * Returns undefined for any string that is not so prefixed
+ * (for example custom-encoded namespaces), so the caller can
+ * omit the field rather than crash.
+ */
 function deriveNamespaceBaseSlot(namespace: string): string | undefined {
   const prefix = "erc7201:";
   if (!namespace.startsWith(prefix)) return undefined;
@@ -85,6 +116,15 @@ function deriveNamespaceBaseSlot(namespace: string): string | undefined {
   return id.length > 0 ? erc7201(id) : undefined;
 }
 
+/**
+ * Builds the export object for one contract.
+ *
+ * In "full" mode it emits the root storage plus every namespace,
+ * each namespace tagged with its derived baseSlot, and a single
+ * types dictionary covering all of them. In "tab" mode it emits
+ * only the active slice (root or one namespace), with the
+ * namespace tab carrying its own baseSlot and namespace name.
+ */
 function buildWrapper(
   entry: LayoutEntry,
   mode: "full" | "tab",
@@ -162,6 +202,14 @@ function buildWrapper(
   });
 }
 
+/**
+ * Serializes a storage layout to a JSON string for the clipboard.
+ *
+ * "all" mode wraps every open contract under { contracts: [...] }.
+ * "full" and "tab" modes export a single contract, full layout or
+ * just the active tab respectively. Every payload carries a
+ * schemaVersion so consumers can detect format changes.
+ */
 export function buildExport(opts: SingleOpts | AllOpts): string {
   if (opts.mode === "all") {
     const contracts = opts.layouts.map((l) =>
