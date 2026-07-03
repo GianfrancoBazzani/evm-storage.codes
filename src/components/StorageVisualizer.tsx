@@ -25,10 +25,52 @@ import { normalizeUint256Literal } from "@/lib/integer-literals";
 import { erc7201 } from "@/lib/erc7201";
 import { MAX_CONTIGUOUS_ITEM_SLOT_ROWS } from "@/lib/constants";
 
-import type { StorageLayout, StorageItem } from "@openzeppelin/upgrades-core";
+import type {
+  StorageLayout,
+  StorageItem,
+  TypeItem,
+  TypeItemMembers,
+  StructMember,
+} from "@openzeppelin/upgrades-core";
 
 const SLOT_ZERO =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
+
+// A type's `members` is either struct fields or enum value names (plain
+// strings) - only the former has its own slot/offset layout to unwrap.
+function isStructMembers(members: TypeItemMembers): members is StructMember[] {
+  return members.length === 0 || typeof members[0] !== "string";
+}
+
+// Replaces struct-typed items with one synthetic item per field (dot-joined
+// label, e.g. "testStorage.a") so struct internals display the same way as
+// top-level variables instead of one opaque blob. Recurses for nested
+// structs. Arrays of structs and mappings are left as-is: their members
+// don't have static slots to unwrap this way.
+function unwrapStructItems(
+  items: StorageItem[],
+  types: Record<string, TypeItem>
+): StorageItem[] {
+  const result: StorageItem[] = [];
+  for (const item of items) {
+    const members = types[item.type]?.members;
+    if (members && isStructMembers(members)) {
+      const fieldItems: StorageItem[] = members.map((member) => ({
+        astId: item.astId,
+        contract: item.contract,
+        label: `${item.label}.${member.label}`,
+        type: member.type,
+        src: item.src,
+        offset: member.offset,
+        slot: (BigInt(item.slot ?? 0) + BigInt(member.slot ?? 0)).toString(),
+      }));
+      result.push(...unwrapStructItems(fieldItems, types));
+    } else {
+      result.push(item);
+    }
+  }
+  return result;
+}
 
 export interface StorageVisualizerProps {
   contractName: string;
@@ -131,6 +173,14 @@ export default function StorageVisualizer({
     baseSlot: string,
     isNamespace: boolean = false
   ): StorageLayoutWrapper {
+    // Unwrap struct fields so they display individually instead of as one
+    // opaque blob spanning the struct's full size. Must run before the
+    // baseSlot normalization below: struct members' slots (from
+    // storageLayout.types) are always decimal, while normalization
+    // rewrites .slot to an unprefixed hex string, which BigInt() can't
+    // parse back consistently.
+    storageItems = unwrapStructItems(storageItems, storageLayout.types);
+
     // Normalize baseSlot if is custom
     if (!isNamespace && baseSlot !== SLOT_ZERO) {
       const storageItemsNormalized = JSON.parse(JSON.stringify(storageItems));
