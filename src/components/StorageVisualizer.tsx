@@ -304,7 +304,7 @@ export default function StorageVisualizer({
                     onClick={async () => {
                       try {
                         await navigator.clipboard.writeText(
-                          `https://evm-storage.codes/?address=${address}&chainId=${chainId}`
+                          `${window.location.origin}/?address=${address}&chainId=${chainId}`
                         );
                         if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
                         setCopied(true);
