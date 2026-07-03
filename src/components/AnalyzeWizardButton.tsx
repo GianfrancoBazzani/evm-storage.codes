@@ -41,7 +41,7 @@ import {
   MIN_NAMESPACED_COMPATIBLE_SOLC_VERSION,
   BROTLI_QUALITY,
 } from "@/lib/constants";
-import { z } from "zod";
+import { ethAddressSchema } from "@/lib/ethAddress";
 import { cn } from "@/lib/utils";
 import * as versions from "compare-versions";
 import brotliPromise from "brotli-wasm";
@@ -50,15 +50,6 @@ import type { SolcInput, SolcOutput } from "@openzeppelin/upgrades-core";
 import type { Dispatch, SetStateAction } from "react";
 import type { StorageLayout } from "@openzeppelin/upgrades-core";
 import type { ReactNode } from "react";
-
-const ethAddressSchema = z
-  .string()
-  .length(42, {
-    message: "Must be exactly 42 characters long including leading '0x'",
-  })
-  .regex(/^0x[0-9a-fA-F]*$/, {
-    message: "Must contain only hexadecimal characters",
-  });
 
 interface AnalyzeWizardButtonProps {
   setParentDialogOpen?: Dispatch<SetStateAction<boolean>>;
