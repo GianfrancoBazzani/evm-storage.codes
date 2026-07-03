@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Loader2 } from "lucide-react";
 import Landing from "@/components/Landing";
 import Header from "@/components/Header";
 import StorageVisualizer from "@/components/StorageVisualizer";
@@ -26,6 +27,13 @@ function App() {
   const chainId = url.searchParams.get("chainId");
   const address = url.searchParams.get("address");
 
+  // True while the ?chainId=&address= cache lookup below is in flight, so
+  // the Landing page doesn't flash before a cached layout (or the fallback
+  // wizard) is ready to render.
+  const [isCheckingCache, setIsCheckingCache] = useState(
+    Boolean(chainId && address)
+  );
+
   // Check if the storage is cached
   useEffect(() => {
     if (!chainId && !address) return;
@@ -41,6 +49,7 @@ function App() {
         chainId: chainId ?? "",
         address: address ?? "",
       });
+      setIsCheckingCache(false);
       return;
     }
 
@@ -78,6 +87,8 @@ function App() {
           error
         );
         miss("error");
+      } finally {
+        setIsCheckingCache(false);
       }
     }
     fetchCachedStorageLayout();
@@ -91,7 +102,11 @@ function App() {
           setStorageLayouts,
         }}
       >
-        {storageLayouts.length === 0 ? (
+        {isCheckingCache ? (
+          <div className="min-h-screen w-screen flex items-center justify-center bg-black">
+            <Loader2 className="animate-spin h-16 w-16 text-green-500" />
+          </div>
+        ) : storageLayouts.length === 0 ? (
           <Landing
             notice={
               shareLinkMiss && (
