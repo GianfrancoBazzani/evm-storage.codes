@@ -245,7 +245,7 @@ export default function AnalyzeWizardButton({
               href="https://verify.sourcify.dev/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-green-500 underline"
+              className="text-red-500 underline"
             >
               Sourcify Verifier
             </a>
@@ -728,20 +728,20 @@ export default function AnalyzeWizardButton({
 
       {/* Wizard Step 5: Fetching from Sourcify Errors */}
       {wizardStep === WizardStep.FETCHING_ERROR && (
-        <DialogContent className="bg-black border-green-500 p-6 rounded-md">
+        <DialogContent className="bg-black border-red-500 text-red-500 p-6 rounded-md [&>button]:text-red-500 [&>button:hover]:text-red-500 [&>button:hover]:bg-red-900/30">
           <DialogHeader>
-            <DialogTitle className="text-green-500">
+            <DialogTitle className="text-red-500 text-center font-bold">
               Errors while fetching the contract artifacts from Sourcify
             </DialogTitle>
             <DialogDescription
               id="upload-dialog-description"
-              className="text-green-800"
+              className="text-red-500 text-center"
             >
-              <span className="text-red-500">{fetchArtifactsError}</span>
+              {fetchArtifactsError}
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-center">
-            <FileX className="h-15 w-15 text-green-500 my-4" />
+            <FileX className="h-15 w-15 text-red-500 my-4" />
           </div>
         </DialogContent>
       )}
