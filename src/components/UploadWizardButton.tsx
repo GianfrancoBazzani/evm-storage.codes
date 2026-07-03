@@ -1,5 +1,5 @@
 import { useContext, useState, useRef, useEffect } from "react";
-import { StorageLayoutsContext } from "../App";
+import { StorageLayoutsContext } from "@/contexts/StorageLayoutsContext";
 import { Upload, X, File as FileIcon, Loader2, FileX } from "lucide-react";
 import {
   Dialog,
@@ -218,7 +218,7 @@ export default function UploadWizardButton({
 
     // Create solcInput object
     const _solcInput: SolcInput = { sources: sources };
-    // @ts-ignore
+    // @ts-expect-error language is not typed in SolcInput
     _solcInput.language = "Solidity";
     _solcInput.settings = {
       outputSelection: {
@@ -230,18 +230,18 @@ export default function UploadWizardButton({
     };
     if (advancedOptionsEnabled) {
       if (evmVersion && evmVersion !== "default") {
-        //@ts-ignore
+        //@ts-expect-error evmVersion is not typed in SolcInput settings
         _solcInput.settings.evmVersion = evmVersion;
       }
       if (optimizationEnabled) {
-        //@ts-ignore
+        //@ts-expect-error optimizer is not typed in SolcInput settings
         _solcInput.settings.optimizer = {
           enabled: optimizationEnabled,
           runs: numRuns,
         };
       }
       if (viaIREnabled) {
-        // @ts-ignore
+        // @ts-expect-error viaIR is not typed in SolcInput settings
         _solcInput.settings.viaIR = true;
       }
     }
@@ -383,7 +383,7 @@ export default function UploadWizardButton({
     if (!selectedContract || !solcInput || !solcOutput) return;
 
     // Extract storage layout using backend
-    var storageLayout: StorageLayout | undefined = undefined;
+    let storageLayout: StorageLayout | undefined = undefined;
     try {
       // To avoid Vercel FUNCTION_PAYLOAD_TOO_LARGE minimize the solcOutput
       const _brotli = await brotliPromise;
