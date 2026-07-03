@@ -36,6 +36,12 @@ interface UploadWizardButtonProps {
   triggerVisualizerId?: number;
 }
 
+// viaIR management
+function isViaIRSupported(version: string) {
+  if (!version) return false;
+  return versions.compare(version, MIN_VIA_IR_VERSION, ">=");
+}
+
 export default function UploadWizardButton({
   setParentDialogOpen = undefined,
   triggerVisualizerId = undefined,
@@ -93,11 +99,6 @@ export default function UploadWizardButton({
     Record<string, string>
   >({});
 
-  // viaIR management
-  function isViaIRSupported(version: string) {
-    if (!compilerVersion) return false;
-    return versions.compare(version, MIN_VIA_IR_VERSION, ">=");
-  }
   useEffect(() => {
     if (!isViaIRSupported(compilerVersion)) {
       setViaIREnabled(false);
@@ -294,88 +295,99 @@ export default function UploadWizardButton({
   }
 
   // Compile Namespaces useEffect
-  async function compileNamespaces() {
-    try {
-      // To avoid FUNCTION_PAYLOAD_TOO_LARGE compress the  data using brotli
-      const _brotli = await brotliPromise;
-      const _textEncoder = new TextEncoder();
-      const _uncompressedBodyRequest = _textEncoder.encode(
-        JSON.stringify({
-          solcInput: solcInput,
-          solcOutput: solcOutput,
-          compilerVersion: compilerVersion,
-        })
-      );
-      const _compressedBodyRequest = _brotli.compress(
-        _uncompressedBodyRequest,
-        {
-          quality: BROTLI_QUALITY,
-        }
-      );
-
-      const response = await fetch("/api/get_namespaced_input", {
-        method: "POST",
-        headers: { "Content-Type": "application/octet-stream" },
-        body: new Uint8Array(_compressedBodyRequest),
-      });
-      if (!response.ok) {
-        throw new Error((await response.json()).message);
-      }
-
-      // Parse the response
-      const _arrayBuffer = await response.arrayBuffer();
-      const _textDecoder = new TextDecoder();
-      const _namespacedInput = JSON.parse(_textDecoder.decode(_arrayBuffer));
-
-      // Compile contract using compiler worker
-      const worker = new Worker("/dynSolcWorkerBundle.js");
-      worker.addEventListener(
-        "message",
-        (msg) => {
-          const _namespacedOutput: SolcOutput = JSON.parse(msg.data.solcOutput);
-          setNamespacedOutput(_namespacedOutput);
-          if (
-            _namespacedOutput.errors &&
-            _namespacedOutput.errors.some(
-              (error: { severity: string }) => error.severity === "error"
-            )
-          ) {
-            setWizardStep(WizardStep.COMPILATION_ERROR);
-          } else {
-            setWizardStep(WizardStep.SELECT_CONTRACT);
-          }
-          worker.terminate();
-        },
-        false
-      );
-      worker.postMessage({
-        solcInput: JSON.stringify(_namespacedInput),
-        solcBin: compilerVersions[compilerVersion],
-      });
-    } catch (error) {
-      const _solcOutput: SolcOutput = {
-        errors: [
-          {
-            severity: "error",
-            formattedMessage: "Error compiling namespaces: " + error,
-          },
-        ],
-        contracts: {},
-        sources: {},
-      };
-      setSolcOutput(_solcOutput);
-      setWizardStep(WizardStep.COMPILATION_ERROR);
-      return;
-    }
-  }
   useEffect(() => {
     if (
-      wizardStep === WizardStep.COMPILING_NAMESPACED &&
-      solcOutput !== undefined
+      wizardStep !== WizardStep.COMPILING_NAMESPACED ||
+      solcOutput === undefined
     ) {
-      compileNamespaces();
+      return;
     }
-  }, [wizardStep]);
+    compileNamespaces();
+
+    async function compileNamespaces() {
+      try {
+        // To avoid FUNCTION_PAYLOAD_TOO_LARGE compress the  data using brotli
+        const _brotli = await brotliPromise;
+        const _textEncoder = new TextEncoder();
+        const _uncompressedBodyRequest = _textEncoder.encode(
+          JSON.stringify({
+            solcInput: solcInput,
+            solcOutput: solcOutput,
+            compilerVersion: compilerVersion,
+          })
+        );
+        const _compressedBodyRequest = _brotli.compress(
+          _uncompressedBodyRequest,
+          {
+            quality: BROTLI_QUALITY,
+          }
+        );
+
+        const response = await fetch("/api/get_namespaced_input", {
+          method: "POST",
+          headers: { "Content-Type": "application/octet-stream" },
+          body: new Uint8Array(_compressedBodyRequest),
+        });
+        if (!response.ok) {
+          throw new Error((await response.json()).message);
+        }
+
+        // Parse the response
+        const _arrayBuffer = await response.arrayBuffer();
+        const _textDecoder = new TextDecoder();
+        const _namespacedInput = JSON.parse(_textDecoder.decode(_arrayBuffer));
+
+        // Compile contract using compiler worker
+        const worker = new Worker("/dynSolcWorkerBundle.js");
+        worker.addEventListener(
+          "message",
+          (msg) => {
+            const _namespacedOutput: SolcOutput = JSON.parse(msg.data.solcOutput);
+            setNamespacedOutput(_namespacedOutput);
+            if (
+              _namespacedOutput.errors &&
+              _namespacedOutput.errors.some(
+                (error: { severity: string }) => error.severity === "error"
+              )
+            ) {
+              setWizardStep(WizardStep.COMPILATION_ERROR);
+            } else {
+              setWizardStep(WizardStep.SELECT_CONTRACT);
+            }
+            worker.terminate();
+          },
+          false
+        );
+        worker.postMessage({
+          solcInput: JSON.stringify(_namespacedInput),
+          solcBin: compilerVersions[compilerVersion],
+        });
+      } catch (error) {
+        const _solcOutput: SolcOutput = {
+          errors: [
+            {
+              severity: "error",
+              formattedMessage: "Error compiling namespaces: " + error,
+            },
+          ],
+          contracts: {},
+          sources: {},
+        };
+        setSolcOutput(_solcOutput);
+        setWizardStep(WizardStep.COMPILATION_ERROR);
+        return;
+      }
+    }
+  }, [
+    wizardStep,
+    solcOutput,
+    solcInput,
+    compilerVersion,
+    compilerVersions,
+    WizardStep.COMPILING_NAMESPACED,
+    WizardStep.COMPILATION_ERROR,
+    WizardStep.SELECT_CONTRACT,
+  ]);
 
   // Load storage layout function
   async function handleLoadStorageLayout() {
@@ -582,7 +594,7 @@ export default function UploadWizardButton({
                 checked={advancedOptionsEnabled}
                 onChange={(e) => setAdvancedOptionsEnabled(e.target.checked)}
                 id="advanced-options-checkbox"
-                className="h-4 w-4 not-checked:appearance-none rounded border border-green-500 accent-green-500"
+                className="checkbox-green h-4 w-4 appearance-none rounded border border-green-500 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
               />
               <label
                 htmlFor="advanced-options-checkbox"
@@ -629,7 +641,7 @@ export default function UploadWizardButton({
                       checked={optimizationEnabled}
                       onChange={(e) => setOptimizationEnabled(e.target.checked)}
                       id="optimizer-checkbox"
-                      className="h-4 w-4 not-checked:appearance-none rounded border border-green-500 accent-green-500"
+                      className="checkbox-green h-4 w-4 appearance-none rounded border border-green-500 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
                     />
                     <label
                       htmlFor="optimizer-checkbox"
@@ -662,7 +674,7 @@ export default function UploadWizardButton({
                       checked={viaIREnabled}
                       onChange={(e) => setViaIREnabled(e.target.checked)}
                       id="via-ir-checkbox"
-                      className={`h-4 w-4 not-checked:appearance-none rounded border border-green-500 accent-green-500`}
+                      className={`checkbox-green h-4 w-4 appearance-none rounded border border-green-500 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]`}
                     />
                     <label
                       htmlFor="via-ir-checkbox"

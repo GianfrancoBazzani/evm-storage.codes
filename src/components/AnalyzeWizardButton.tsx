@@ -351,95 +351,105 @@ export default function AnalyzeWizardButton({
   }
 
   // Compile Namespaces useEffect
-  async function compileNamespaces() {
-    try {
-      // To avoid FUNCTION_PAYLOAD_TOO_LARGE compress the  data using brotli
-      const _brotli = await brotliPromise;
-      const _textEncoder = new TextEncoder();
-      const _compilerVersionSemver =
-        compilerBinary.match(/v(\d+\.\d+\.\d+)/)?.[1];
-      const _uncompressedBodyRequest = _textEncoder.encode(
-        JSON.stringify({
-          solcInput: solcInput,
-          solcOutput: solcOutput,
-          compilerVersion: _compilerVersionSemver,
-        })
-      );
-      const _compressedBodyRequest = _brotli.compress(
-        _uncompressedBodyRequest,
-        {
-          quality: BROTLI_QUALITY,
-        }
-      );
-
-      // Generate namespaced compiler input in the backend
-      const response = await fetch("/api/get_namespaced_input", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/octet-stream",
-        },
-        body: new Uint8Array(_compressedBodyRequest),
-      });
-      if (!response.ok) {
-        throw new Error((await response.json()).message);
-      }
-      
-      // Decode the response
-      const _arrayBuffer = await response.arrayBuffer();
-      const _textDecoder = new TextDecoder();
-      const _namespacedInput = JSON.parse(
-        _textDecoder.decode(_arrayBuffer)
-      );
-
-      //  Compile contract using compiler worker
-      const worker = new Worker("/dynSolcWorkerBundle.js");
-      worker.addEventListener(
-        "message",
-        (msg) => {
-          const _namespacedOutput: SolcOutput = JSON.parse(msg.data.solcOutput);
-          setNamespacedOutput(_namespacedOutput);
-          if (
-            _namespacedOutput.errors &&
-            _namespacedOutput.errors.some(
-              (error: { severity: string }) => error.severity === "error"
-            )
-          ) {
-            setWizardStep(WizardStep.COMPILATION_ERROR);
-          } else {
-            setWizardStep(WizardStep.SELECT_CONTRACT);
-          }
-          worker.terminate();
-        },
-        false
-      );
-      worker.postMessage({
-        solcInput: JSON.stringify(_namespacedInput),
-        solcBin: compilerBinary,
-      });
-    } catch (error) {
-      const _solcOutput: SolcOutput = {
-        errors: [
-          {
-            severity: "error",
-            formattedMessage: "Error compiling namespaces: " + error,
-          },
-        ],
-        contracts: {},
-        sources: {},
-      };
-      setSolcOutput(_solcOutput);
-      setWizardStep(WizardStep.COMPILATION_ERROR);
-      return;
-    }
-  }
   useEffect(() => {
     if (
-      wizardStep === WizardStep.COMPILING_NAMESPACED &&
-      solcOutput !== undefined
+      wizardStep !== WizardStep.COMPILING_NAMESPACED ||
+      solcOutput === undefined
     ) {
-      compileNamespaces();
+      return;
     }
-  }, [wizardStep]);
+    compileNamespaces();
+
+    async function compileNamespaces() {
+      try {
+        // To avoid FUNCTION_PAYLOAD_TOO_LARGE compress the  data using brotli
+        const _brotli = await brotliPromise;
+        const _textEncoder = new TextEncoder();
+        const _compilerVersionSemver =
+          compilerBinary.match(/v(\d+\.\d+\.\d+)/)?.[1];
+        const _uncompressedBodyRequest = _textEncoder.encode(
+          JSON.stringify({
+            solcInput: solcInput,
+            solcOutput: solcOutput,
+            compilerVersion: _compilerVersionSemver,
+          })
+        );
+        const _compressedBodyRequest = _brotli.compress(
+          _uncompressedBodyRequest,
+          {
+            quality: BROTLI_QUALITY,
+          }
+        );
+
+        // Generate namespaced compiler input in the backend
+        const response = await fetch("/api/get_namespaced_input", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/octet-stream",
+          },
+          body: new Uint8Array(_compressedBodyRequest),
+        });
+        if (!response.ok) {
+          throw new Error((await response.json()).message);
+        }
+      
+        // Decode the response
+        const _arrayBuffer = await response.arrayBuffer();
+        const _textDecoder = new TextDecoder();
+        const _namespacedInput = JSON.parse(
+          _textDecoder.decode(_arrayBuffer)
+        );
+
+        //  Compile contract using compiler worker
+        const worker = new Worker("/dynSolcWorkerBundle.js");
+        worker.addEventListener(
+          "message",
+          (msg) => {
+            const _namespacedOutput: SolcOutput = JSON.parse(msg.data.solcOutput);
+            setNamespacedOutput(_namespacedOutput);
+            if (
+              _namespacedOutput.errors &&
+              _namespacedOutput.errors.some(
+                (error: { severity: string }) => error.severity === "error"
+              )
+            ) {
+              setWizardStep(WizardStep.COMPILATION_ERROR);
+            } else {
+              setWizardStep(WizardStep.SELECT_CONTRACT);
+            }
+            worker.terminate();
+          },
+          false
+        );
+        worker.postMessage({
+          solcInput: JSON.stringify(_namespacedInput),
+          solcBin: compilerBinary,
+        });
+      } catch (error) {
+        const _solcOutput: SolcOutput = {
+          errors: [
+            {
+              severity: "error",
+              formattedMessage: "Error compiling namespaces: " + error,
+            },
+          ],
+          contracts: {},
+          sources: {},
+        };
+        setSolcOutput(_solcOutput);
+        setWizardStep(WizardStep.COMPILATION_ERROR);
+        return;
+      }
+    }
+  }, [
+    wizardStep,
+    solcOutput,
+    solcInput,
+    compilerBinary,
+    WizardStep.COMPILING_NAMESPACED,
+    WizardStep.COMPILATION_ERROR,
+    WizardStep.SELECT_CONTRACT,
+  ]);
 
   // Load storage layout function
   async function handleLoadStorageLayout() {
