@@ -36,17 +36,69 @@ EVM-Storage.codes leverages [OpenZeppelin's upgrades-core](https://github.com/Op
   npm install --global yarn
   ```
 
+### Local development
+
+This project has a Vite frontend and Vercel serverless functions in `api/`.
+Some flows need both pieces to be running.
+
+Use `yarn dev` when you only need the frontend Vite server. This is useful for
+UI-only work, styling, and components that do not call `/api/*` routes.
+
+Use `yarn vercel dev` when you need the full application locally. Storage layout
+loading, ERC-7201 namespaced storage extraction, compatibility reports, compiler
+version proxying, and cached layout loading all call Vercel functions under
+`/api/*`.
+
+If you run the full app with `yarn dev`, the UI may still load, but API-backed
+flows can fail because plain Vite does not serve the `api/` directory.
+
+### Vercel and environment variables
+
+The production app runs the `api/` directory as Vercel serverless functions.
+`yarn vercel dev` uses the Vercel CLI to emulate those functions locally.
+
+Some API routes work with public network access only, while cache-related
+behavior uses Upstash Redis environment variables:
+
+```bash
+UPSTASH_REDIS_REST_URL
+UPSTASH_REDIS_REST_TOKEN
+```
+
+External contributors may not have access to the project's Vercel team or
+production environment variables. In that case, Vercel CLI can still start a
+local development server, but routes that depend on missing private environment
+variables may log warnings or skip cache-backed behavior.
+
+When opening a PR, mention any API-backed behavior that you could not fully
+verify locally because of missing Vercel project access or environment
+variables.
+
 ### Scripts
 
 The following commands, defined in the `package.json` file, are available to streamline your development and deployment workflow:
 
-- **yarn dev**: Starts the Vite development server.
-- **yarn vercel dev**: Launches the application in a Vercel development environment, simulating a serverless deployment locally.
+- **yarn dev**: Starts the Vite development server for frontend-only work. It does not serve the `/api/*` Vercel functions.
+- **yarn vercel dev**: Launches the application in a Vercel development environment, simulating the serverless functions in `api/` locally. Use this for full storage layout and comparison flows.
 - **yarn vercel build**: Builds the application for deployment on Vercel, optimizing it for a production serverless environment.
 - **yarn build**: Runs TypeScript’s build (`tsc -b`) and then creates an optimized production bundle using Vite.
 - **yarn bundle-solc-worker**: Bundles the dynamic Solidity compiler worker code (`dynSolcWorker.js`) using Browserify and Babelify.
 - **yarn lint**: Executes ESLint to analyze and flag issues in the code, maintaining quality and consistency.
 - **yarn preview**: Serves a preview of the production build locally.
+
+### Troubleshooting local setup
+
+If storage layout loading fails locally, first confirm that the app was started
+with `yarn vercel dev`, not plain `yarn dev`.
+
+If Vercel CLI asks to connect a project and you do not have access to the
+upstream Vercel project, you can continue with local development, but private
+environment-backed behavior such as Redis caching may not be available.
+
+If you see Upstash Redis warnings locally, check whether the Redis environment
+variables above are configured. Missing Redis variables should not affect
+frontend-only work, but cache-backed routes cannot be fully verified without
+them.
 
 ## License
 
