@@ -582,7 +582,7 @@ export default function UploadWizardButton({
                 checked={advancedOptionsEnabled}
                 onChange={(e) => setAdvancedOptionsEnabled(e.target.checked)}
                 id="advanced-options-checkbox"
-                className="h-4 w-4 not-checked:appearance-none rounded border border-green-500 accent-green-500"
+                className="h-4 w-4 not-checked:appearance-none rounded border border-green-500 accent-green-500 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
               />
               <label
                 htmlFor="advanced-options-checkbox"
@@ -629,7 +629,7 @@ export default function UploadWizardButton({
                       checked={optimizationEnabled}
                       onChange={(e) => setOptimizationEnabled(e.target.checked)}
                       id="optimizer-checkbox"
-                      className="h-4 w-4 not-checked:appearance-none rounded border border-green-500 accent-green-500"
+                      className="h-4 w-4 not-checked:appearance-none rounded border border-green-500 accent-green-500 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
                     />
                     <label
                       htmlFor="optimizer-checkbox"
@@ -662,7 +662,7 @@ export default function UploadWizardButton({
                       checked={viaIREnabled}
                       onChange={(e) => setViaIREnabled(e.target.checked)}
                       id="via-ir-checkbox"
-                      className={`h-4 w-4 not-checked:appearance-none rounded border border-green-500 accent-green-500`}
+                      className={`h-4 w-4 not-checked:appearance-none rounded border border-green-500 accent-green-500 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]`}
                     />
                     <label
                       htmlFor="via-ir-checkbox"
