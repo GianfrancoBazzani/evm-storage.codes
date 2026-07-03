@@ -99,6 +99,7 @@ function App() {
                   kind={shareLinkMiss.kind}
                   chainId={shareLinkMiss.chainId}
                   address={shareLinkMiss.address}
+                  onDismiss={() => setShareLinkMiss(undefined)}
                 />
               )
             }
