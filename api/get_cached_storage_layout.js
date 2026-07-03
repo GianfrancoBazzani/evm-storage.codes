@@ -30,7 +30,7 @@ export async function POST(request) {
     const cacheKey = `${chainId}:${address}`;
     const entry = await redis.get(cacheKey);
 
-    if (!entry.storageLayout) {
+    if (!entry?.storageLayout) {
       return new Response(
         JSON.stringify({ message: "Storage layout not cached." }),
         {
