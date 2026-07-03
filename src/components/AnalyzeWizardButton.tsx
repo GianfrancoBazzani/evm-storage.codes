@@ -1,5 +1,5 @@
 import { useContext, useState, useEffect } from "react";
-import { StorageLayoutsContext } from "../App";
+import { StorageLayoutsContext } from "@/contexts/StorageLayoutsContext";
 import { Upload, Loader2, FileX, ChevronsUpDown, Check } from "lucide-react";
 import {
   Dialog,
@@ -447,7 +447,7 @@ export default function AnalyzeWizardButton({
     if (!selectedContract || !solcInput || !solcOutput) return;
 
     // Extract storage layout using backend
-    var storageLayout: StorageLayout | undefined = undefined;
+    let storageLayout: StorageLayout | undefined = undefined;
     try {
       // To avoid Vercel FUNCTION_PAYLOAD_TOO_LARGE minimize the solcOutput
       const _brotli = await brotliPromise;
@@ -669,7 +669,7 @@ export default function AnalyzeWizardButton({
             >
               Please wait while your contract source files are being compiled.
               {
-                //@ts-ignore
+                //@ts-expect-error optimizer is not typed in SolcInput settings
                 solcInput?.settings?.optimizer?.enabled && (
                   <p>
                     Compilation might take a while because the optimizer is

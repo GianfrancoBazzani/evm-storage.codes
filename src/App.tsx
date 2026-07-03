@@ -1,24 +1,11 @@
-import {
-  useState,
-  createContext,
-  Dispatch,
-  SetStateAction,
-  useEffect,
-} from "react";
+import { useState, useEffect } from "react";
 import Landing from "@/components/Landing";
 import Header from "@/components/Header";
 import StorageVisualizer from "@/components/StorageVisualizer";
 import Footer from "./components/Footer";
+import { StorageLayoutsContext } from "@/contexts/StorageLayoutsContext";
 
 import type { StorageVisualizerProps } from "@/components/StorageVisualizer";
-
-interface StorageLayoutsContextType {
-  storageLayouts: StorageVisualizerProps[];
-  setStorageLayouts: Dispatch<SetStateAction<StorageVisualizerProps[]>>;
-}
-export const StorageLayoutsContext = createContext<
-  StorageLayoutsContextType | undefined
->(undefined);
 
 function App() {
   const [storageLayouts, setStorageLayouts] = useState<
