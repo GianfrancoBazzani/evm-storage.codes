@@ -80,7 +80,7 @@ export default function Landing() {
             {examples.map((example, index) => (
               <li key={index}>
                 <a
-                  href={`https://evm-storage.codes/?address=${example.address}&chainId=${example.chainId}`}
+                  href={`/?address=${example.address}&chainId=${example.chainId}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="underline"
