@@ -9,6 +9,7 @@ import Landing from "@/components/Landing";
 import Header from "@/components/Header";
 import StorageVisualizer from "@/components/StorageVisualizer";
 import Footer from "./components/Footer";
+import AnalyzeWizardButton from "@/components/AnalyzeWizardButton";
 
 import type { StorageVisualizerProps } from "@/components/StorageVisualizer";
 
@@ -24,6 +25,14 @@ function App() {
   const [storageLayouts, setStorageLayouts] = useState<
     StorageVisualizerProps[]
   >([]);
+
+  // Set when a ?chainId=&address= link misses the storage-layout cache (or
+  // caching isn't configured, e.g. local dev without Upstash credentials),
+  // so the user still lands on a pre-filled ANALYZE ADDRESS wizard instead
+  // of a blank Landing page.
+  const [autoFillTarget, setAutoFillTarget] = useState<
+    { chainId: number; address: string } | undefined
+  >(undefined);
 
   // Parse URL arguments
   const url = new URL(window.location.href);
@@ -42,6 +51,7 @@ function App() {
           body: JSON.stringify({ chainId, address }),
         });
         if (!response.ok) {
+          setAutoFillTarget({ chainId: Number(chainId), address: address! });
           return;
         }
         const data = await response.json();
@@ -56,12 +66,15 @@ function App() {
               address: address ? address : undefined,
             },
           ]);
+        } else {
+          setAutoFillTarget({ chainId: Number(chainId), address: address! });
         }
       } catch (error) {
         console.error(
           `Error fetching cached storage layout for chainId: ${chainId} and address: ${address}:`,
           error
         );
+        setAutoFillTarget({ chainId: Number(chainId), address: address! });
       }
     }
     fetchCachedStorageLayout();
@@ -76,7 +89,15 @@ function App() {
         }}
       >
         {storageLayouts.length === 0 ? (
-          <Landing />
+          <>
+            <Landing />
+            {autoFillTarget && (
+              <AnalyzeWizardButton
+                initialChainId={autoFillTarget.chainId}
+                initialAddress={autoFillTarget.address}
+              />
+            )}
+          </>
         ) : (
           <>
             <div className="flex-grow bg-black text-green-500 px-4">

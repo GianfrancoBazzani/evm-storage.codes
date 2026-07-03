@@ -63,11 +63,18 @@ const ethAddressSchema = z
 interface AnalyzeWizardButtonProps {
   setParentDialogOpen?: Dispatch<SetStateAction<boolean>>;
   triggerVisualizerId?: number;
+  // Pre-fill and auto-open the wizard for a given chain/address (used by
+  // App.tsx to recover from a storage-layout cache miss on ?chainId=&address=
+  // links) instead of requiring the user to open the dialog manually.
+  initialChainId?: number;
+  initialAddress?: string;
 }
 
 export default function AnalyzeWizardButton({
   setParentDialogOpen = undefined,
   triggerVisualizerId = undefined,
+  initialChainId = undefined,
+  initialAddress = undefined,
 }: AnalyzeWizardButtonProps) {
   // Global context
   const storageLayoutsContext = useContext(StorageLayoutsContext);
@@ -77,7 +84,9 @@ export default function AnalyzeWizardButton({
   const { setStorageLayouts } = storageLayoutsContext;
 
   // New state to control the dialog's open/close state.
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(
+    Boolean(initialChainId && initialAddress)
+  );
 
   // Wizard step
   enum WizardStep {
@@ -131,8 +140,18 @@ export default function AnalyzeWizardButton({
     fetchChains();
   }, []);
 
+  // Pre-select the chain once the chains list has loaded, when opened with
+  // an initialChainId (see AnalyzeWizardButtonProps above).
+  useEffect(() => {
+    if (initialChainId === undefined || chains.length === 0) return;
+    const matchedChain = chains.find((_chain) => _chain.chainId === initialChainId);
+    if (matchedChain) {
+      setChainName(matchedChain.name);
+    }
+  }, [chains, initialChainId]);
+
   // Address management with zod validation
-  const [address, setAddress] = useState<string | undefined>(undefined);
+  const [address, setAddress] = useState<string | undefined>(initialAddress);
   const [addressError, setAddressError] = useState<string | undefined>(
     undefined
   );
@@ -528,14 +547,16 @@ export default function AnalyzeWizardButton({
 
   return (
     <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
-      <DialogTrigger asChild>
-        <Button
-          className="w-52 bg-green-900/30 text-green-500 border border-green-500 hover:bg-green-600/40 hover:text-green-300 transition-all duration-300 px-8 py-6 text-lg animate-pulse"
-          onClick={() => setDialogOpen(true)}
-        >
-          <Upload className="mr-2 h-4 w-4" /> ANALYZE ADDRESS
-        </Button>
-      </DialogTrigger>
+      {!initialAddress && (
+        <DialogTrigger asChild>
+          <Button
+            className="w-52 bg-green-900/30 text-green-500 border border-green-500 hover:bg-green-600/40 hover:text-green-300 transition-all duration-300 px-8 py-6 text-lg animate-pulse"
+            onClick={() => setDialogOpen(true)}
+          >
+            <Upload className="mr-2 h-4 w-4" /> ANALYZE ADDRESS
+          </Button>
+        </DialogTrigger>
+      )}
 
       {/* Wizard Step 1: Select Network and Address */}
       {wizardStep === WizardStep.SELECT_ADDRESS && (

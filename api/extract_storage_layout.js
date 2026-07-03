@@ -5,6 +5,7 @@ import {
 import { brotliDecompressSync } from "zlib";
 import { findAll, astDereferencer, isNodeType } from "solidity-ast/utils.js";
 import { Redis } from "@upstash/redis";
+import { hasUpstashCredentials } from "./_lib/upstash.js";
 
 export async function POST(request) {
   try {
@@ -54,7 +55,7 @@ export async function POST(request) {
     );
 
     // Cache the storage layout in the database if it is not already cached
-    if (chainId && address) {
+    if (chainId && address && hasUpstashCredentials()) {
       try {
         // Minimal integrity test
         const response = await fetch(

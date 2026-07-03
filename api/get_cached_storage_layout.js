@@ -1,4 +1,5 @@
 import { Redis } from "@upstash/redis";
+import { hasUpstashCredentials } from "./_lib/upstash.js";
 
 export async function POST(request) {
   try {
@@ -9,6 +10,16 @@ export async function POST(request) {
         JSON.stringify({ message: "Chain ID and address are required." }),
         {
           status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    if (!hasUpstashCredentials()) {
+      return new Response(
+        JSON.stringify({ message: "Storage layout not cached." }),
+        {
+          status: 404,
           headers: { "Content-Type": "application/json" },
         }
       );
