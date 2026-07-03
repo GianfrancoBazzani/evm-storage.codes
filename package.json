@@ -51,7 +51,7 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vercel/node": "^5.5.15",
-    "@vitejs/plugin-react-swc": "^3.11.0",
+    "@vitejs/plugin-react-swc": "^4.3.0",
     "babelify": "^10.0.0",
     "browserify": "^17.0.1",
     "eslint": "^9.39.1",

@@ -40,13 +40,13 @@ EVM-Storage.codes leverages [OpenZeppelin's upgrades-core](https://github.com/Op
 
 The following commands, defined in the `package.json` file, are available to streamline your development and deployment workflow:
 
-- **yarn dev**: Starts the Vite development server.
-- **yarn vercel dev**: Launches the application in a Vercel development environment, simulating a serverless deployment locally.
-- **yarn vercel build**: Builds the application for deployment on Vercel, optimizing it for a production serverless environment.
-- **yarn build**: Runs TypeScript’s build (`tsc -b`) and then creates an optimized production bundle using Vite.
-- **yarn bundle-solc-worker**: Bundles the dynamic Solidity compiler worker code (`dynSolcWorker.js`) using Browserify and Babelify.
-- **yarn lint**: Executes ESLint to analyze and flag issues in the code, maintaining quality and consistency.
-- **yarn preview**: Serves a preview of the production build locally.
+- **`yarn dev`**: Starts the Vite development server.
+- **`yarn vercel dev`**: Launches the application in a Vercel development environment, simulating a serverless deployment locally.
+- **`yarn vercel build`**: Builds the application for deployment on Vercel, optimizing it for a production serverless environment.
+- **`yarn build`**: Runs TypeScript’s build (`tsc -b`) and then creates an optimized production bundle using Vite.
+- **`yarn bundle-solc-worker`**: Bundles the dynamic Solidity compiler worker code (`dynSolcWorker.js`) using Browserify and Babelify.
+- **`yarn lint`**: Executes ESLint to analyze and flag issues in the code, maintaining quality and consistency.
+- **`yarn preview`**: Serves a preview of the production build locally.
 
 ## License
 
