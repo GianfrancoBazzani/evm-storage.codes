@@ -54,11 +54,19 @@ import type { ReactNode } from "react";
 interface AnalyzeWizardButtonProps {
   setParentDialogOpen?: Dispatch<SetStateAction<boolean>>;
   triggerVisualizerId?: number;
+  // Share-link recovery (ShareLinkNotFound): seed the address and pre-select
+  // the network once the chains list loads. Opening still requires a click.
+  initialChainId?: number;
+  initialAddress?: string;
+  triggerLabel?: string;
 }
 
 export default function AnalyzeWizardButton({
   setParentDialogOpen = undefined,
   triggerVisualizerId = undefined,
+  initialChainId = undefined,
+  initialAddress = undefined,
+  triggerLabel = "ANALYZE ADDRESS",
 }: AnalyzeWizardButtonProps) {
   // Global context
   const storageLayoutsContext = useContext(StorageLayoutsContext);
@@ -122,8 +130,19 @@ export default function AnalyzeWizardButton({
     fetchChains();
   }, []);
 
+  // Pre-select the share link's chain once the chains list has loaded.
+  useEffect(() => {
+    if (initialChainId === undefined || chains.length === 0) return;
+    const matchedChain = chains.find(
+      (_chain) => _chain.chainId === initialChainId
+    );
+    if (matchedChain) {
+      setChainName(matchedChain.name);
+    }
+  }, [chains, initialChainId]);
+
   // Address management with zod validation
-  const [address, setAddress] = useState<string | undefined>(undefined);
+  const [address, setAddress] = useState<string | undefined>(initialAddress);
   const [addressError, setAddressError] = useState<string | undefined>(
     undefined
   );
@@ -524,7 +543,7 @@ export default function AnalyzeWizardButton({
           className="w-52 bg-green-900/30 text-green-500 border border-green-500 hover:bg-green-600/40 hover:text-green-300 transition-all duration-300 px-8 py-6 text-lg animate-pulse"
           onClick={() => setDialogOpen(true)}
         >
-          <Upload className="mr-2 h-4 w-4" /> ANALYZE ADDRESS
+          <Upload className="mr-2 h-4 w-4" /> {triggerLabel}
         </Button>
       </DialogTrigger>
 
