@@ -174,11 +174,7 @@ export default function StorageVisualizer({
     isNamespace: boolean = false
   ): StorageLayoutWrapper {
     // Unwrap struct fields so they display individually instead of as one
-    // opaque blob spanning the struct's full size. Must run before the
-    // baseSlot normalization below: struct members' slots (from
-    // storageLayout.types) are always decimal, while normalization
-    // rewrites .slot to an unprefixed hex string, which BigInt() can't
-    // parse back consistently.
+    // opaque blob spanning the struct's full size.
     storageItems = unwrapStructItems(storageItems, storageLayout.types);
 
     // Normalize baseSlot if is custom
@@ -188,7 +184,7 @@ export default function StorageVisualizer({
         storageItemsNormalized[i].slot = (
           BigInt(normalizeUint256Literal(storageItemsNormalized[i].slot)) -
           BigInt(baseSlot)
-        ).toString(16);
+        ).toString();
       }
       storageItems = storageItemsNormalized;
     }
