@@ -13,8 +13,4 @@ export const EVM_VERSIONS = [
   "constantinople",
 ];
 export const BROTLI_QUALITY = 9;
-// Storage items (e.g. `__gap` arrays) can legitimately span thousands of
-// slots. Rendering one DOM row + tooltip per slot for those makes the page
-// unresponsive, so a single item spanning more slots than this is collapsed
-// into one summary row instead of one row per slot it occupies.
-export const MAX_CONTIGUOUS_ITEM_SLOT_ROWS = 200;
+export const MAX_CONTIGUOUS_ITEM_SLOT_ROWS = 64;
