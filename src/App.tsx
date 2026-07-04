@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Loader2 } from "lucide-react";
 import Landing from "@/components/Landing";
 import Header from "@/components/Header";
 import StorageVisualizer from "@/components/StorageVisualizer";
@@ -26,6 +27,10 @@ function App() {
   const chainId = url.searchParams.get("chainId");
   const address = url.searchParams.get("address");
 
+  const [isCheckingCache, setIsCheckingCache] = useState(
+    Boolean(chainId && address)
+  );
+
   // Check if the storage is cached
   useEffect(() => {
     if (!chainId && !address) return;
@@ -41,6 +46,7 @@ function App() {
         chainId: chainId ?? "",
         address: address ?? "",
       });
+      setIsCheckingCache(false);
       return;
     }
 
@@ -78,6 +84,8 @@ function App() {
           error
         );
         miss("error");
+      } finally {
+        setIsCheckingCache(false);
       }
     }
     fetchCachedStorageLayout();
@@ -91,6 +99,11 @@ function App() {
           setStorageLayouts,
         }}
       >
+        {isCheckingCache && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+            <Loader2 className="animate-spin h-16 w-16 text-green-500" />
+          </div>
+        )}
         {storageLayouts.length === 0 ? (
           <Landing
             notice={
