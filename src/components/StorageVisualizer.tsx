@@ -435,63 +435,56 @@ export default function StorageVisualizer({
               key={index}
               className=" px-4 pb-4 overflow-x-auto text-green-500 text-sm leading-relaxed"
             >
-              {layout.slots.map((slot, index) => (
-                <div className=" flex flex-row my-0.5 ">
-                  <div className="w-5 text-[11px]">{index}</div>
-                  <div key={index} className=" h-[1.2rem] w-full relative ">
-                    {slot.map((item, index) => (
-                      <div key={index} className=" flex flex-col">
-                        <Tooltip
-                          open={Boolean(
-                            visibleTooltips[
-                              `${layout.name}|${
-                                storageLayout?.types[item.item.type].label
-                              }|${item.item.label}`
-                            ] ||
-                              pinnedTooltips[
-                                `${layout.name}|${
-                                  storageLayout?.types[item.item.type].label
-                                }|${item.item.label}`
-                              ]
-                          )}
-                          onOpenChange={(isOpen) =>
-                            handleOpenTooltip(
-                              `${layout.name}|${
-                                storageLayout?.types[item.item.type].label
-                              }|${item.item.label}`,
-                              isOpen
-                            )
-                          }
-                        >
-                          <TooltipTrigger
-                            asChild
-                            onClick={() => {
-                              handlePinTooltip(
-                                `${layout.name}|${
-                                  storageLayout?.types[item.item.type].label
-                                }|${item.item.label}`
-                              );
-                            }}
+              {layout.slots.map((slot, slotIndex) => (
+                <div key={slotIndex} className=" flex flex-row my-0.5 ">
+                  <div className="w-5 text-[11px]">{slotIndex}</div>
+                  <div className=" h-[1.2rem] w-full relative ">
+                    {slot.map((item, itemIndex) => {
+                      // Include the row/segment position in the key: an
+                      // item spanning multiple slots (e.g. uint256[80])
+                      // repeats the same label/type on every row it
+                      // occupies, so without this each segment would share
+                      // one tooltip state and all open together on hover.
+                      const tooltipKey = `${layout.name}|${
+                        storageLayout?.types[item.item.type].label
+                      }|${item.item.label}|${slotIndex}|${itemIndex}`;
+                      return (
+                        <div key={itemIndex} className=" flex flex-col">
+                          <Tooltip
+                            open={Boolean(
+                              visibleTooltips[tooltipKey] ||
+                                pinnedTooltips[tooltipKey]
+                            )}
+                            onOpenChange={(isOpen) =>
+                              handleOpenTooltip(tooltipKey, isOpen)
+                            }
                           >
-                            <div
-                              style={{
-                                width: `${item.width}%`,
-                                left: `${item.offset}%`,
-                                backgroundColor: item.color,
+                            <TooltipTrigger
+                              asChild
+                              onClick={() => {
+                                handlePinTooltip(tooltipKey);
                               }}
-                              className="h-full absolute border border-green-500"
-                            />
-                          </TooltipTrigger>
-                          <TooltipContent className="bg-black border-green-500 border text-green-500 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
-                            <span>
-                              {`${
-                                storageLayout?.types[item.item.type].label
-                              } | ${item.item.label}`}
-                            </span>
-                          </TooltipContent>
-                        </Tooltip>
-                      </div>
-                    ))}
+                            >
+                              <div
+                                style={{
+                                  width: `${item.width}%`,
+                                  left: `${item.offset}%`,
+                                  backgroundColor: item.color,
+                                }}
+                                className="h-full absolute border border-green-500"
+                              />
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-black border-green-500 border text-green-500 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
+                              <span>
+                                {`${
+                                  storageLayout?.types[item.item.type].label
+                                } | ${item.item.label}`}
+                              </span>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                      );
+                    })}
                   </div>
                   <div className="h-[2px]" />
                 </div>
