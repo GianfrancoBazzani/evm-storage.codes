@@ -8,7 +8,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { StorageLayoutsContext } from "../App";
+import { StorageLayoutsContext } from "@/contexts/StorageLayoutsContext";
 import {
   Dialog,
   DialogTrigger,
@@ -23,6 +23,7 @@ import ComparisonWizardButton from "@/components/ComparisonWizardButton";
 import ColorHash from "color-hash";
 import { normalizeUint256Literal } from "@/lib/integer-literals";
 import { erc7201 } from "@/lib/erc7201";
+import { MAX_CONTIGUOUS_ITEM_SLOT_ROWS } from "@/lib/constants";
 
 import type { StorageLayout, StorageItem } from "@openzeppelin/upgrades-core";
 
@@ -103,12 +104,21 @@ export default function StorageVisualizer({
   interface ItemWrapper {
     item: StorageItem;
     color: string;
-    width: Number;
-    offset: Number;
+    width: number;
+    offset: number;
+  }
+
+  // A single displayed row. Usually one row is one slot (label is that slot
+  // number), but an item spanning more than MAX_CONTIGUOUS_ITEM_SLOT_ROWS
+  // slots (e.g. a large __gap array) is collapsed into one row covering the
+  // whole range instead of one row per slot it occupies.
+  interface SlotRow {
+    items: ItemWrapper[];
+    label: string;
   }
 
   interface StorageLayoutWrapper {
-    slots: ItemWrapper[][];
+    slots: SlotRow[];
     name: string;
     baseSlot: string;
   }
@@ -123,7 +133,7 @@ export default function StorageVisualizer({
   ): StorageLayoutWrapper {
     // Normalize baseSlot if is custom
     if (!isNamespace && baseSlot !== SLOT_ZERO) {
-      let storageItemsNormalized = JSON.parse(JSON.stringify(storageItems));
+      const storageItemsNormalized = JSON.parse(JSON.stringify(storageItems));
       for (let i = 0; i < storageItemsNormalized.length; i++) {
         storageItemsNormalized[i].slot = (
           BigInt(normalizeUint256Literal(storageItemsNormalized[i].slot)) -
@@ -135,13 +145,13 @@ export default function StorageVisualizer({
 
     // Build astIdToColor object
     const colorHash = new ColorHash();
-    let idToColor: { [key: string]: string } = {};
+    const idToColor: { [key: string]: string } = {};
     storageItems.forEach((item) => {
       idToColor[`${item.contract}:${item.label}`] = colorHash.hex(item.label);
     });
 
     let maxSlot = 0;
-    let slots: Array<Array<ItemWrapper>> = [];
+    const slots: Array<SlotRow> = [];
     if (storageItems.length > 0) {
       // Set maxSlot
       maxSlot = Number(
@@ -154,7 +164,7 @@ export default function StorageVisualizer({
           )
       );
       // Extend max Slot if there is an overflow in the "last" slot
-      let lastSlotTypeNumberOfBytes = Number(
+      const lastSlotTypeNumberOfBytes = Number(
         storageLayout?.types[storageItems.slice(-1)[0].type].numberOfBytes
       );
       if (lastSlotTypeNumberOfBytes > 32) {
@@ -164,10 +174,42 @@ export default function StorageVisualizer({
       // Build slots array
       let overflowBytes = 0;
       for (let i = 0; i <= maxSlot; i++) {
-        let slotItems = storageItems.filter((item) => Number(item.slot) === i);
+        const slotItems = storageItems.filter(
+          (item) => Number(item.slot) === i
+        );
+
+        // An item spanning more slots than MAX_CONTIGUOUS_ITEM_SLOT_ROWS
+        // (e.g. a large __gap array) is collapsed into a single row instead
+        // of one row per slot: rendering thousands of rows/tooltips makes
+        // the page unresponsive for no visual benefit, since every one of
+        // those rows would look identical anyway.
+        if (overflowBytes === 0 && slotItems.length === 1) {
+          const itemNumberOfBytes = Number(
+            storageLayout?.types[slotItems[0].type].numberOfBytes
+          );
+          const itemSlotSpan = Math.ceil(itemNumberOfBytes / 32);
+          if (itemSlotSpan > MAX_CONTIGUOUS_ITEM_SLOT_ROWS) {
+            const item = slotItems[0];
+            const endSlot = i + itemSlotSpan - 1;
+            slots.push({
+              items: [
+                {
+                  item,
+                  color: idToColor[`${item.contract}:${item.label}`],
+                  width: 100,
+                  offset: 0,
+                },
+              ],
+              label: `${i}–${endSlot}`,
+            });
+            i = endSlot;
+            continue;
+          }
+        }
+
         // if previous slot is overflown
         if (overflowBytes > 0) {
-          slotItems?.unshift(slots[i - 1].slice(-1)[0].item);
+          slotItems?.unshift(slots[slots.length - 1].items.slice(-1)[0].item);
         }
         // compute bytes used by storage objects in the slot it can overflow
         let bytesUsed = overflowBytes;
@@ -176,9 +218,9 @@ export default function StorageVisualizer({
             (bytesUsed += Number(storageLayout?.types[item.type].numberOfBytes))
         );
         // Wrap slot Items
-        let slotItemsWrapped: ItemWrapper[] = slotItems
+        const slotItemsWrapped: ItemWrapper[] = slotItems
           ? slotItems?.map((item, index) => {
-              let width: Number = Number(
+              let width: number = Number(
                 storageLayout?.types[item.type].numberOfBytes
               );
               if (index === 0 && overflowBytes > 0) {
@@ -188,8 +230,10 @@ export default function StorageVisualizer({
                   width = overflowBytes;
                 }
               }
-              Number(width) > 32 ? (width = 32) : width;
-              let wrappedItem: ItemWrapper = {
+              if (width > 32) {
+                width = 32;
+              }
+              const wrappedItem: ItemWrapper = {
                 item: item,
                 color: idToColor[`${item.contract}:${item.label}`],
                 width: Number(width) * 3.125, // 100%/32Bytes = 3.125
@@ -206,7 +250,7 @@ export default function StorageVisualizer({
         } else {
           overflowBytes = 0;
         }
-        slots.push(slotItemsWrapped);
+        slots.push({ items: slotItemsWrapped, label: String(i) });
       }
     }
     return {
@@ -225,7 +269,7 @@ export default function StorageVisualizer({
   }
 
   // Build storage layouts array for the visualizer
-  let storageLayouts: StorageLayoutWrapper[] = [];
+  const storageLayouts: StorageLayoutWrapper[] = [];
 
   // Root layout
   storageLayouts.push(
@@ -300,7 +344,7 @@ export default function StorageVisualizer({
                     onClick={async () => {
                       try {
                         await navigator.clipboard.writeText(
-                          `https://evm-storage.codes/?address=${address}&chainId=${chainId}`
+                          `${window.location.origin}/?address=${address}&chainId=${chainId}`
                         );
                         if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
                         setCopied(true);
@@ -431,63 +475,58 @@ export default function StorageVisualizer({
               key={index}
               className=" px-4 pb-4 overflow-x-auto text-green-500 text-sm leading-relaxed"
             >
-              {layout.slots.map((slot, index) => (
-                <div className=" flex flex-row my-0.5 ">
-                  <div className="w-5 text-[11px]">{index}</div>
-                  <div key={index} className=" h-[1.2rem] w-full relative ">
-                    {slot.map((item, index) => (
-                      <div key={index} className=" flex flex-col">
-                        <Tooltip
-                          open={Boolean(
-                            visibleTooltips[
-                              `${layout.name}|${
-                                storageLayout?.types[item.item.type].label
-                              }|${item.item.label}`
-                            ] ||
-                              pinnedTooltips[
-                                `${layout.name}|${
-                                  storageLayout?.types[item.item.type].label
-                                }|${item.item.label}`
-                              ]
-                          )}
-                          onOpenChange={(isOpen) =>
-                            handleOpenTooltip(
-                              `${layout.name}|${
-                                storageLayout?.types[item.item.type].label
-                              }|${item.item.label}`,
-                              isOpen
-                            )
-                          }
-                        >
-                          <TooltipTrigger
-                            asChild
-                            onClick={() => {
-                              handlePinTooltip(
-                                `${layout.name}|${
-                                  storageLayout?.types[item.item.type].label
-                                }|${item.item.label}`
-                              );
-                            }}
+              {layout.slots.map((row, rowIndex) => (
+                <div key={rowIndex} className=" flex flex-row my-0.5 ">
+                  <div className="min-w-5 shrink-0 pr-1 text-[11px]">
+                    {row.label}
+                  </div>
+                  <div className=" h-[1.2rem] w-full relative ">
+                    {row.items.map((item, itemIndex) => {
+                      // Include the row/segment position in the key: an
+                      // item spanning multiple slots (e.g. uint256[80])
+                      // repeats the same label/type on every row it
+                      // occupies, so without this each segment would share
+                      // one tooltip state and all open together on hover.
+                      const tooltipKey = `${layout.name}|${
+                        storageLayout?.types[item.item.type].label
+                      }|${item.item.label}|${rowIndex}|${itemIndex}`;
+                      return (
+                        <div key={itemIndex} className=" flex flex-col">
+                          <Tooltip
+                            open={Boolean(
+                              visibleTooltips[tooltipKey] ||
+                                pinnedTooltips[tooltipKey]
+                            )}
+                            onOpenChange={(isOpen) =>
+                              handleOpenTooltip(tooltipKey, isOpen)
+                            }
                           >
-                            <div
-                              style={{
-                                width: `${item.width}%`,
-                                left: `${item.offset}%`,
-                                backgroundColor: item.color,
+                            <TooltipTrigger
+                              asChild
+                              onClick={() => {
+                                handlePinTooltip(tooltipKey);
                               }}
-                              className="h-full absolute border border-green-500"
-                            />
-                          </TooltipTrigger>
-                          <TooltipContent className="bg-black border-green-500 border text-green-500 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
-                            <span>
-                              {`${
-                                storageLayout?.types[item.item.type].label
-                              } | ${item.item.label}`}
-                            </span>
-                          </TooltipContent>
-                        </Tooltip>
-                      </div>
-                    ))}
+                            >
+                              <div
+                                style={{
+                                  width: `${item.width}%`,
+                                  left: `${item.offset}%`,
+                                  backgroundColor: item.color,
+                                }}
+                                className="h-full absolute border border-green-500"
+                              />
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-black border-green-500 border text-green-500 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
+                              <span>
+                                {`${
+                                  storageLayout?.types[item.item.type].label
+                                } | ${item.item.label}`}
+                              </span>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                      );
+                    })}
                   </div>
                   <div className="h-[2px]" />
                 </div>

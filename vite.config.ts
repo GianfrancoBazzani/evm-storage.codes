@@ -10,5 +10,13 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "src"),
     },
-  }
+  },
+  server: {
+    proxy: {
+      "/api": "http://localhost:3000",
+    },
+  },
+  optimizeDeps: {
+    exclude: ["brotli-wasm"],
+  },
 });
