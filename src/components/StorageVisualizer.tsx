@@ -8,7 +8,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { StorageLayoutsContext } from "../App";
+import { StorageLayoutsContext } from "@/contexts/StorageLayoutsContext";
 import {
   Dialog,
   DialogTrigger,
@@ -103,8 +103,8 @@ export default function StorageVisualizer({
   interface ItemWrapper {
     item: StorageItem;
     color: string;
-    width: Number;
-    offset: Number;
+    width: number;
+    offset: number;
   }
 
   interface StorageLayoutWrapper {
@@ -123,7 +123,7 @@ export default function StorageVisualizer({
   ): StorageLayoutWrapper {
     // Normalize baseSlot if is custom
     if (!isNamespace && baseSlot !== SLOT_ZERO) {
-      let storageItemsNormalized = JSON.parse(JSON.stringify(storageItems));
+      const storageItemsNormalized = JSON.parse(JSON.stringify(storageItems));
       for (let i = 0; i < storageItemsNormalized.length; i++) {
         storageItemsNormalized[i].slot = (
           BigInt(normalizeUint256Literal(storageItemsNormalized[i].slot)) -
@@ -135,13 +135,13 @@ export default function StorageVisualizer({
 
     // Build astIdToColor object
     const colorHash = new ColorHash();
-    let idToColor: { [key: string]: string } = {};
+    const idToColor: { [key: string]: string } = {};
     storageItems.forEach((item) => {
       idToColor[`${item.contract}:${item.label}`] = colorHash.hex(item.label);
     });
 
     let maxSlot = 0;
-    let slots: Array<Array<ItemWrapper>> = [];
+    const slots: Array<Array<ItemWrapper>> = [];
     if (storageItems.length > 0) {
       // Set maxSlot
       maxSlot = Number(
@@ -154,7 +154,7 @@ export default function StorageVisualizer({
           )
       );
       // Extend max Slot if there is an overflow in the "last" slot
-      let lastSlotTypeNumberOfBytes = Number(
+      const lastSlotTypeNumberOfBytes = Number(
         storageLayout?.types[storageItems.slice(-1)[0].type].numberOfBytes
       );
       if (lastSlotTypeNumberOfBytes > 32) {
@@ -164,7 +164,9 @@ export default function StorageVisualizer({
       // Build slots array
       let overflowBytes = 0;
       for (let i = 0; i <= maxSlot; i++) {
-        let slotItems = storageItems.filter((item) => Number(item.slot) === i);
+        const slotItems = storageItems.filter(
+          (item) => Number(item.slot) === i
+        );
         // if previous slot is overflown
         if (overflowBytes > 0) {
           slotItems?.unshift(slots[i - 1].slice(-1)[0].item);
@@ -176,9 +178,9 @@ export default function StorageVisualizer({
             (bytesUsed += Number(storageLayout?.types[item.type].numberOfBytes))
         );
         // Wrap slot Items
-        let slotItemsWrapped: ItemWrapper[] = slotItems
+        const slotItemsWrapped: ItemWrapper[] = slotItems
           ? slotItems?.map((item, index) => {
-              let width: Number = Number(
+              let width: number = Number(
                 storageLayout?.types[item.type].numberOfBytes
               );
               if (index === 0 && overflowBytes > 0) {
@@ -188,8 +190,10 @@ export default function StorageVisualizer({
                   width = overflowBytes;
                 }
               }
-              Number(width) > 32 ? (width = 32) : width;
-              let wrappedItem: ItemWrapper = {
+              if (width > 32) {
+                width = 32;
+              }
+              const wrappedItem: ItemWrapper = {
                 item: item,
                 color: idToColor[`${item.contract}:${item.label}`],
                 width: Number(width) * 3.125, // 100%/32Bytes = 3.125
@@ -225,7 +229,7 @@ export default function StorageVisualizer({
   }
 
   // Build storage layouts array for the visualizer
-  let storageLayouts: StorageLayoutWrapper[] = [];
+  const storageLayouts: StorageLayoutWrapper[] = [];
 
   // Root layout
   storageLayouts.push(
@@ -300,7 +304,7 @@ export default function StorageVisualizer({
                     onClick={async () => {
                       try {
                         await navigator.clipboard.writeText(
-                          `https://evm-storage.codes/?address=${address}&chainId=${chainId}`
+                          `${window.location.origin}/?address=${address}&chainId=${chainId}`
                         );
                         if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
                         setCopied(true);

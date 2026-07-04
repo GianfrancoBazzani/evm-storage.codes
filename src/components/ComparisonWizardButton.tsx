@@ -1,5 +1,5 @@
 import { useContext, useState } from "react";
-import { StorageLayoutsContext } from "../App";
+import { StorageLayoutsContext } from "@/contexts/StorageLayoutsContext";
 import { GitCompareArrows, CircleX, Loader2 } from "lucide-react";
 import {
   Dialog,

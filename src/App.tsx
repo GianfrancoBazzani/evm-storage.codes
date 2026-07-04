@@ -1,38 +1,24 @@
-import {
-  useState,
-  createContext,
-  Dispatch,
-  SetStateAction,
-  useEffect,
-} from "react";
-import { Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
 import Landing from "@/components/Landing";
 import Header from "@/components/Header";
 import StorageVisualizer from "@/components/StorageVisualizer";
 import Footer from "./components/Footer";
-import AnalyzeWizardButton from "@/components/AnalyzeWizardButton";
+import { StorageLayoutsContext } from "@/contexts/StorageLayoutsContext";
+import ShareLinkNotFound from "@/components/ShareLinkNotFound";
+import { ethAddressSchema } from "@/lib/ethAddress";
 
 import type { StorageVisualizerProps } from "@/components/StorageVisualizer";
-
-interface StorageLayoutsContextType {
-  storageLayouts: StorageVisualizerProps[];
-  setStorageLayouts: Dispatch<SetStateAction<StorageVisualizerProps[]>>;
-}
-export const StorageLayoutsContext = createContext<
-  StorageLayoutsContextType | undefined
->(undefined);
+import type { ShareLinkMissKind } from "@/components/ShareLinkNotFound";
 
 function App() {
   const [storageLayouts, setStorageLayouts] = useState<
     StorageVisualizerProps[]
   >([]);
 
-  // Set when a ?chainId=&address= link misses the storage-layout cache (or
-  // caching isn't configured, e.g. local dev without Upstash credentials),
-  // so the user still lands on a pre-filled ANALYZE ADDRESS wizard instead
-  // of a blank Landing page.
-  const [autoFillTarget, setAutoFillTarget] = useState<
-    { chainId: number; address: string } | undefined
+  // Set when a ?chainId=&address= share link cannot serve a cached layout,
+  // so Landing shows the ShareLinkNotFound banner instead of failing silently.
+  const [shareLinkMiss, setShareLinkMiss] = useState<
+    { kind: ShareLinkMissKind; chainId: string; address: string } | undefined
   >(undefined);
 
   // Parse URL arguments
@@ -40,18 +26,27 @@ function App() {
   const chainId = url.searchParams.get("chainId");
   const address = url.searchParams.get("address");
 
-  // True while the ?chainId=&address= cache lookup below is in flight, so
-  // the Landing page doesn't flash before a cached layout (or the fallback
-  // wizard) is ready to render.
-  const [isCheckingCache, setIsCheckingCache] = useState(
-    Boolean(chainId && address)
-  );
-
   // Check if the storage is cached
   useEffect(() => {
-    if (!chainId || !address) return;
+    if (!chainId && !address) return;
+
+    if (
+      !chainId ||
+      !address ||
+      !/^\d+$/.test(chainId) ||
+      !ethAddressSchema.safeParse(address).success
+    ) {
+      setShareLinkMiss({
+        kind: "invalid",
+        chainId: chainId ?? "",
+        address: address ?? "",
+      });
+      return;
+    }
 
     async function fetchCachedStorageLayout() {
+      const miss = (kind: ShareLinkMissKind) =>
+        setShareLinkMiss({ kind, chainId: chainId!, address: address! });
       try {
         const response = await fetch("/api/get_cached_storage_layout", {
           method: "POST",
@@ -59,7 +54,7 @@ function App() {
           body: JSON.stringify({ chainId, address }),
         });
         if (!response.ok) {
-          setAutoFillTarget({ chainId: Number(chainId), address: address! });
+          miss(response.status === 404 ? "not-cached" : "error");
           return;
         }
         const data = await response.json();
@@ -75,16 +70,14 @@ function App() {
             },
           ]);
         } else {
-          setAutoFillTarget({ chainId: Number(chainId), address: address! });
+          miss("error");
         }
       } catch (error) {
         console.error(
           `Error fetching cached storage layout for chainId: ${chainId} and address: ${address}:`,
           error
         );
-        setAutoFillTarget({ chainId: Number(chainId), address: address! });
-      } finally {
-        setIsCheckingCache(false);
+        miss("error");
       }
     }
     fetchCachedStorageLayout();
@@ -98,20 +91,19 @@ function App() {
           setStorageLayouts,
         }}
       >
-        {isCheckingCache ? (
-          <div className="min-h-screen w-screen flex items-center justify-center bg-black">
-            <Loader2 className="animate-spin h-16 w-16 text-green-500" />
-          </div>
-        ) : storageLayouts.length === 0 ? (
-          <>
-            <Landing />
-            {autoFillTarget && (
-              <AnalyzeWizardButton
-                initialChainId={autoFillTarget.chainId}
-                initialAddress={autoFillTarget.address}
-              />
-            )}
-          </>
+        {storageLayouts.length === 0 ? (
+          <Landing
+            notice={
+              shareLinkMiss && (
+                <ShareLinkNotFound
+                  kind={shareLinkMiss.kind}
+                  chainId={shareLinkMiss.chainId}
+                  address={shareLinkMiss.address}
+                  onDismiss={() => setShareLinkMiss(undefined)}
+                />
+              )
+            }
+          />
         ) : (
           <>
             <div className="flex-grow bg-black text-green-500 px-4">
