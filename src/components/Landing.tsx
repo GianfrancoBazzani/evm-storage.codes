@@ -2,7 +2,9 @@ import { Github, Coffee } from "lucide-react";
 import UploadWizardButton from "@/components/UploadWizardButton";
 import AnalyzeWizardButton from "@/components/AnalyzeWizardButton";
 
-export default function Landing() {
+import type { ReactNode } from "react";
+
+export default function Landing({ notice }: { notice?: ReactNode }) {
   // ASCII art for the title
   const asciiTitle = `
 ███████╗██╗   ██╗███╗   ███╗    ███████╗████████╗ ██████╗ ██████╗  █████╗  ██████╗ ███████╗    ██████╗ ██████╗ ██████╗ ███████╗███████╗
@@ -61,6 +63,8 @@ export default function Landing() {
         </pre>
       </div>
 
+      {notice}
+
       {/* Buttons */}
       <div className="flex flex-col items-center md:w-xl border border-green-500 mt-6 mb-8 md:m-12 mx-6 p-6 rounded-lg">
         <span className="flex mb-4">
@@ -80,7 +84,7 @@ export default function Landing() {
             {examples.map((example, index) => (
               <li key={index}>
                 <a
-                  href={`https://evm-storage.codes/?address=${example.address}&chainId=${example.chainId}`}
+                  href={`/?address=${example.address}&chainId=${example.chainId}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="underline"
