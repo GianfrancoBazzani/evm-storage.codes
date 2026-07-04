@@ -23,6 +23,7 @@ import ComparisonWizardButton from "@/components/ComparisonWizardButton";
 import ColorHash from "color-hash";
 import { normalizeUint256Literal } from "@/lib/integer-literals";
 import { erc7201 } from "@/lib/erc7201";
+import { MAX_CONTIGUOUS_ITEM_SLOT_ROWS } from "@/lib/constants";
 
 import type { StorageLayout, StorageItem } from "@openzeppelin/upgrades-core";
 
@@ -107,8 +108,17 @@ export default function StorageVisualizer({
     offset: number;
   }
 
+  // A single displayed row. Usually one row is one slot (label is that slot
+  // number), but an item spanning more than MAX_CONTIGUOUS_ITEM_SLOT_ROWS
+  // slots (e.g. a large __gap array) is collapsed into one row covering the
+  // whole range instead of one row per slot it occupies.
+  interface SlotRow {
+    items: ItemWrapper[];
+    label: string;
+  }
+
   interface StorageLayoutWrapper {
-    slots: ItemWrapper[][];
+    slots: SlotRow[];
     name: string;
     baseSlot: string;
   }
@@ -141,7 +151,7 @@ export default function StorageVisualizer({
     });
 
     let maxSlot = 0;
-    const slots: Array<Array<ItemWrapper>> = [];
+    const slots: Array<SlotRow> = [];
     if (storageItems.length > 0) {
       // Set maxSlot
       maxSlot = Number(
@@ -167,9 +177,39 @@ export default function StorageVisualizer({
         const slotItems = storageItems.filter(
           (item) => Number(item.slot) === i
         );
+
+        // An item spanning more slots than MAX_CONTIGUOUS_ITEM_SLOT_ROWS
+        // (e.g. a large __gap array) is collapsed into a single row instead
+        // of one row per slot: rendering thousands of rows/tooltips makes
+        // the page unresponsive for no visual benefit, since every one of
+        // those rows would look identical anyway.
+        if (overflowBytes === 0 && slotItems.length === 1) {
+          const itemNumberOfBytes = Number(
+            storageLayout?.types[slotItems[0].type].numberOfBytes
+          );
+          const itemSlotSpan = Math.ceil(itemNumberOfBytes / 32);
+          if (itemSlotSpan > MAX_CONTIGUOUS_ITEM_SLOT_ROWS) {
+            const item = slotItems[0];
+            const endSlot = i + itemSlotSpan - 1;
+            slots.push({
+              items: [
+                {
+                  item,
+                  color: idToColor[`${item.contract}:${item.label}`],
+                  width: 100,
+                  offset: 0,
+                },
+              ],
+              label: `${i}–${endSlot}`,
+            });
+            i = endSlot;
+            continue;
+          }
+        }
+
         // if previous slot is overflown
         if (overflowBytes > 0) {
-          slotItems?.unshift(slots[i - 1].slice(-1)[0].item);
+          slotItems?.unshift(slots[slots.length - 1].items.slice(-1)[0].item);
         }
         // compute bytes used by storage objects in the slot it can overflow
         let bytesUsed = overflowBytes;
@@ -210,7 +250,7 @@ export default function StorageVisualizer({
         } else {
           overflowBytes = 0;
         }
-        slots.push(slotItemsWrapped);
+        slots.push({ items: slotItemsWrapped, label: String(i) });
       }
     }
     return {
@@ -435,11 +475,13 @@ export default function StorageVisualizer({
               key={index}
               className=" px-4 pb-4 overflow-x-auto text-green-500 text-sm leading-relaxed"
             >
-              {layout.slots.map((slot, slotIndex) => (
-                <div key={slotIndex} className=" flex flex-row my-0.5 ">
-                  <div className="w-5 text-[11px]">{slotIndex}</div>
+              {layout.slots.map((row, rowIndex) => (
+                <div key={rowIndex} className=" flex flex-row my-0.5 ">
+                  <div className="min-w-5 shrink-0 pr-1 text-[11px]">
+                    {row.label}
+                  </div>
                   <div className=" h-[1.2rem] w-full relative ">
-                    {slot.map((item, itemIndex) => {
+                    {row.items.map((item, itemIndex) => {
                       // Include the row/segment position in the key: an
                       // item spanning multiple slots (e.g. uint256[80])
                       // repeats the same label/type on every row it
@@ -447,7 +489,7 @@ export default function StorageVisualizer({
                       // one tooltip state and all open together on hover.
                       const tooltipKey = `${layout.name}|${
                         storageLayout?.types[item.item.type].label
-                      }|${item.item.label}|${slotIndex}|${itemIndex}`;
+                      }|${item.item.label}|${rowIndex}|${itemIndex}`;
                       return (
                         <div key={itemIndex} className=" flex flex-col">
                           <Tooltip
