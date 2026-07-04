@@ -27,9 +27,6 @@ function App() {
   const chainId = url.searchParams.get("chainId");
   const address = url.searchParams.get("address");
 
-  // True while the ?chainId=&address= cache lookup below is in flight, so
-  // the Landing page doesn't flash before a cached layout (or the fallback
-  // wizard) is ready to render.
   const [isCheckingCache, setIsCheckingCache] = useState(
     Boolean(chainId && address)
   );
@@ -102,11 +99,12 @@ function App() {
           setStorageLayouts,
         }}
       >
-        {isCheckingCache ? (
-          <div className="min-h-screen w-screen flex items-center justify-center bg-black">
+        {isCheckingCache && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
             <Loader2 className="animate-spin h-16 w-16 text-green-500" />
           </div>
-        ) : storageLayouts.length === 0 ? (
+        )}
+        {storageLayouts.length === 0 ? (
           <Landing
             notice={
               shareLinkMiss && (
