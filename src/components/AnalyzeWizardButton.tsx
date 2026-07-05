@@ -1,6 +1,6 @@
 import { useContext, useState, useEffect } from "react";
 import { StorageLayoutsContext } from "@/contexts/StorageLayoutsContext";
-import { Upload, Loader2, FileX, ChevronsUpDown, Check } from "lucide-react";
+import { Search, Loader2, FileX, ChevronsUpDown, Check } from "lucide-react";
 import {
   Dialog,
   DialogTrigger,
@@ -60,6 +60,7 @@ interface AnalyzeWizardButtonProps {
   initialChainId?: number;
   initialAddress?: string;
   triggerLabel?: string;
+  triggerClassName?: string;
 }
 
 export default function AnalyzeWizardButton({
@@ -68,6 +69,7 @@ export default function AnalyzeWizardButton({
   initialChainId = undefined,
   initialAddress = undefined,
   triggerLabel = "ANALYZE ADDRESS",
+  triggerClassName,
 }: AnalyzeWizardButtonProps) {
   // Global context
   const storageLayoutsContext = useContext(StorageLayoutsContext);
@@ -587,10 +589,13 @@ export default function AnalyzeWizardButton({
     <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
       <DialogTrigger asChild>
         <Button
-          className="w-52 bg-green-900/30 text-green-500 border border-green-500 hover:bg-green-600/40 hover:text-green-300 transition-all duration-300 px-8 py-6 text-lg animate-pulse"
+          className={cn(
+            "w-52 bg-green-900/30 text-green-500 border border-green-500 hover:bg-green-600/40 hover:text-green-300 transition-all duration-300 px-8 py-6 text-lg animate-pulse",
+            triggerClassName
+          )}
           onClick={() => setDialogOpen(true)}
         >
-          <Upload className="mr-2 h-4 w-4" /> {triggerLabel}
+          <Search className="mr-2 h-4 w-4" /> {triggerLabel}
         </Button>
       </DialogTrigger>
 
