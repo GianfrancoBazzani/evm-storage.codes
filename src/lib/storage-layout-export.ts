@@ -1,6 +1,6 @@
 import type { StorageLayout, StorageItem } from "@openzeppelin/upgrades-core";
-import { erc7201 } from "@/lib/erc7201";
-import { ROOT_LAYOUT_TAB } from "@/lib/constants";
+import { deriveNamespaceBaseSlot } from "@/lib/erc7201";
+import { normalizeUint256Literal } from "@/lib/integer-literals";
 
 const EXPORT_SCHEMA_VERSION = "evm-storage.codes/storage-layout-export@1";
 const JSON_INDENT_SPACES = 2;
@@ -17,13 +17,10 @@ export type LayoutEntry = {
   storageLayout: StorageLayout;
 };
 
-type SingleOpts = {
+type SingleOpts = LayoutEntry & {
   mode: "full" | "tab";
-  contractName: string;
-  chainId: number | undefined;
-  address: string | undefined;
-  storageLayout: StorageLayout;
-  activeTab: string;
+  /** Namespace key to export in "tab" mode; undefined means the root slice. */
+  namespace?: string;
 };
 
 type AllOpts = {
@@ -63,57 +60,47 @@ export function pickReferencedTypes(
 ): RawTypes {
   const out: RawTypes = {};
   const seen = new Set<string>();
-  const queue: string[] = items.map((i) => i.type);
+  const queue: string[] = [];
+  // Dedup at enqueue time and walk with a cursor: shift() is O(n) per pop,
+  // and ubiquitous types (t_uint256, ...) would otherwise enter the queue
+  // once per reference.
+  const enqueue = (id: string) => {
+    if (!seen.has(id)) {
+      seen.add(id);
+      queue.push(id);
+    }
+  };
+  for (const item of items) enqueue(item.type);
 
-  while (queue.length > 0) {
-    const id = queue.shift()!;
-    if (seen.has(id)) continue;
-    seen.add(id);
+  for (let head = 0; head < queue.length; head++) {
+    const id = queue[head];
     const t = allTypes[id];
     if (!t) continue;
     out[id] = t;
     if (Array.isArray(t.members)) {
       for (const m of t.members) {
-        if (m && typeof m.type === "string") queue.push(m.type);
+        if (m && typeof m.type === "string") enqueue(m.type);
       }
     }
     for (const k of ["underlying", "key", "value", "base"] as const) {
       const v = t[k];
-      if (typeof v === "string" && allTypes[v]) queue.push(v);
+      if (typeof v === "string" && allTypes[v]) enqueue(v);
     }
   }
   return out;
 }
 
 /**
- * Returns a shallow copy with all `undefined`-valued keys dropped.
- *
- * Keeps optional fields (chainId, address, baseSlot, namespaces)
- * out of the JSON entirely when they have no value, instead of
- * serializing them as explicit nulls.
+ * Normalizes the root layout's custom base slot (Solidity 0.8.29+
+ * `layout at <literal>`) to the padded hex form the UI displays,
+ * or undefined when the layout has none so the field is omitted.
  */
-function omitUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
-  const out: Partial<T> = {};
-  for (const k in obj) {
-    if (obj[k] !== undefined) out[k] = obj[k];
-  }
-  return out;
-}
-
-/**
- * Derives the absolute ERC-7201 base slot for a namespace key.
- *
- * Expects the "erc7201:<id>" convention and computes
- * keccak256(keccak256(id) - 1) & ~0xff over the id portion.
- * Returns undefined for any string that is not so prefixed
- * (for example custom-encoded namespaces), so the caller can
- * omit the field rather than crash.
- */
-function deriveNamespaceBaseSlot(namespace: string): string | undefined {
-  const prefix = "erc7201:";
-  if (!namespace.startsWith(prefix)) return undefined;
-  const id = namespace.slice(prefix.length).trim();
-  return id.length > 0 ? erc7201(id) : undefined;
+function normalizedRootBaseSlot(
+  storageLayout: StorageLayout,
+): string | undefined {
+  return storageLayout.baseSlot
+    ? normalizeUint256Literal(storageLayout.baseSlot)
+    : undefined;
 }
 
 /**
@@ -122,31 +109,34 @@ function deriveNamespaceBaseSlot(namespace: string): string | undefined {
  * In "full" mode it emits the root storage plus every namespace,
  * each namespace tagged with its derived baseSlot, and a single
  * types dictionary covering all of them. In "tab" mode it emits
- * only the active slice (root or one namespace), with the
- * namespace tab carrying its own baseSlot and namespace name.
+ * a single slice: the given namespace, or the root storage when
+ * `namespace` is undefined.
  */
 function buildWrapper(
   entry: LayoutEntry,
   mode: "full" | "tab",
-  activeTab: string,
+  namespace?: string,
 ): Record<string, unknown> {
   const { contractName, chainId, address, storageLayout } = entry;
   const allTypes = (storageLayout.types ?? {}) as RawTypes;
 
   if (mode === "full") {
     const rootItems = slimStorageItems(storageLayout.storage ?? []);
+    // Extraction always defines `namespaces` ({} when the contract has
+    // none), so gate on emptiness, not just presence.
     const namespacesRaw = storageLayout.namespaces;
-    const namespaces = namespacesRaw
-      ? Object.fromEntries(
-          Object.entries(namespacesRaw).map(([k, v]) => [
-            k,
-            omitUndefined({
-              baseSlot: deriveNamespaceBaseSlot(k),
-              storage: slimStorageItems(v),
-            }),
-          ]),
-        )
-      : undefined;
+    const namespaces =
+      namespacesRaw && Object.keys(namespacesRaw).length > 0
+        ? Object.fromEntries(
+            Object.entries(namespacesRaw).map(([k, v]) => [
+              k,
+              {
+                baseSlot: deriveNamespaceBaseSlot(k),
+                storage: slimStorageItems(v),
+              },
+            ]),
+          )
+        : undefined;
 
     // Union all items so the types dict stays minimal but complete.
     const allItems: StorageItem[] = [
@@ -155,40 +145,39 @@ function buildWrapper(
     ];
     const types = pickReferencedTypes(allItems, allTypes);
 
-    return omitUndefined({
+    return {
       schemaVersion: EXPORT_SCHEMA_VERSION,
       contractName,
       chainId,
       address,
       solcVersion: storageLayout.solcVersion,
       layoutVersion: storageLayout.layoutVersion,
-      baseSlot: storageLayout.baseSlot,
+      baseSlot: normalizedRootBaseSlot(storageLayout),
       storage: rootItems,
       types,
       namespaces,
-    });
+    };
   }
 
-  // mode === "tab"
-  const isRoot = activeTab === ROOT_LAYOUT_TAB;
-  const namespaceItems = isRoot ? undefined : storageLayout.namespaces?.[activeTab];
-  if (!isRoot && namespaceItems === undefined) {
-    throw new Error(`Unknown storage layout tab: ${activeTab}`);
+  // mode === "tab": one slice. The root slice carries the layout's own
+  // (custom) base slot; a namespace carries only its ERC-7201-derived one,
+  // omitted when the key uses some other formula — the root base slot never
+  // applies to a namespace.
+  let rawItems: StorageItem[];
+  let baseSlot: string | undefined;
+  if (namespace === undefined) {
+    rawItems = storageLayout.storage ?? [];
+    baseSlot = normalizedRootBaseSlot(storageLayout);
+  } else {
+    const namespaceItems = storageLayout.namespaces?.[namespace];
+    if (namespaceItems === undefined) {
+      throw new Error(`Unknown storage layout namespace: ${namespace}`);
+    }
+    rawItems = namespaceItems;
+    baseSlot = deriveNamespaceBaseSlot(namespace);
   }
-  const rawItems = isRoot ? storageLayout.storage ?? [] : namespaceItems!;
-  const items = slimStorageItems(rawItems);
-  const types = pickReferencedTypes(rawItems, allTypes);
 
-  // For namespace tabs, derive baseSlot from the ERC-7201 id portion.
-  let baseSlot: string | undefined = storageLayout.baseSlot;
-  let namespace: string | undefined;
-  if (!isRoot) {
-    namespace = activeTab;
-    const derived = deriveNamespaceBaseSlot(activeTab);
-    if (derived) baseSlot = derived;
-  }
-
-  return omitUndefined({
+  return {
     schemaVersion: EXPORT_SCHEMA_VERSION,
     contractName,
     chainId,
@@ -197,9 +186,9 @@ function buildWrapper(
     layoutVersion: storageLayout.layoutVersion,
     namespace,
     baseSlot,
-    storage: items,
-    types,
-  });
+    storage: slimStorageItems(rawItems),
+    types: pickReferencedTypes(rawItems, allTypes),
+  };
 }
 
 /**
@@ -208,13 +197,13 @@ function buildWrapper(
  * "all" mode wraps every open contract under { contracts: [...] }.
  * "full" and "tab" modes export a single contract, full layout or
  * just the active tab respectively. Every payload carries a
- * schemaVersion so consumers can detect format changes.
+ * schemaVersion so consumers can detect format changes. Optional
+ * fields (chainId, address, baseSlot, namespace(s)) are left
+ * undefined when absent, which JSON.stringify drops from the output.
  */
 export function buildExport(opts: SingleOpts | AllOpts): string {
   if (opts.mode === "all") {
-    const contracts = opts.layouts.map((l) =>
-      buildWrapper(l, "full", ROOT_LAYOUT_TAB),
-    );
+    const contracts = opts.layouts.map((l) => buildWrapper(l, "full"));
     return JSON.stringify(
       { schemaVersion: EXPORT_SCHEMA_VERSION, contracts },
       null,
@@ -222,12 +211,6 @@ export function buildExport(opts: SingleOpts | AllOpts): string {
     );
   }
 
-  const entry: LayoutEntry = {
-    contractName: opts.contractName,
-    chainId: opts.chainId,
-    address: opts.address,
-    storageLayout: opts.storageLayout,
-  };
-  const wrapper = buildWrapper(entry, opts.mode, opts.activeTab);
+  const wrapper = buildWrapper(opts, opts.mode, opts.namespace);
   return JSON.stringify(wrapper, null, JSON_INDENT_SPACES);
 }
