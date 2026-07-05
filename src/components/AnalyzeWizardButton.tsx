@@ -1,5 +1,5 @@
 import { useContext, useState, useEffect } from "react";
-import { StorageLayoutsContext } from "../App";
+import { StorageLayoutsContext } from "@/contexts/StorageLayoutsContext";
 import { Upload, Loader2, FileX, ChevronsUpDown, Check } from "lucide-react";
 import {
   Dialog,
@@ -41,7 +41,7 @@ import {
   MIN_NAMESPACED_COMPATIBLE_SOLC_VERSION,
   BROTLI_QUALITY,
 } from "@/lib/constants";
-import { z } from "zod";
+import { ethAddressSchema } from "@/lib/ethAddress";
 import { cn } from "@/lib/utils";
 import * as versions from "compare-versions";
 import brotliPromise from "brotli-wasm";
@@ -51,23 +51,22 @@ import type { Dispatch, SetStateAction } from "react";
 import type { StorageLayout } from "@openzeppelin/upgrades-core";
 import type { ReactNode } from "react";
 
-const ethAddressSchema = z
-  .string()
-  .length(42, {
-    message: "Must be exactly 42 characters long including leading '0x'",
-  })
-  .regex(/^0x[0-9a-fA-F]*$/, {
-    message: "Must contain only hexadecimal characters",
-  });
-
 interface AnalyzeWizardButtonProps {
   setParentDialogOpen?: Dispatch<SetStateAction<boolean>>;
   triggerVisualizerId?: number;
+  // Share-link recovery (ShareLinkNotFound): seed the address and pre-select
+  // the network once the chains list loads. Opening still requires a click.
+  initialChainId?: number;
+  initialAddress?: string;
+  triggerLabel?: string;
 }
 
 export default function AnalyzeWizardButton({
   setParentDialogOpen = undefined,
   triggerVisualizerId = undefined,
+  initialChainId = undefined,
+  initialAddress = undefined,
+  triggerLabel = "ANALYZE ADDRESS",
 }: AnalyzeWizardButtonProps) {
   // Global context
   const storageLayoutsContext = useContext(StorageLayoutsContext);
@@ -131,8 +130,19 @@ export default function AnalyzeWizardButton({
     fetchChains();
   }, []);
 
+  // Pre-select the share link's chain once the chains list has loaded.
+  useEffect(() => {
+    if (initialChainId === undefined || chains.length === 0) return;
+    const matchedChain = chains.find(
+      (_chain) => _chain.chainId === initialChainId
+    );
+    if (matchedChain) {
+      setChainName(matchedChain.name);
+    }
+  }, [chains, initialChainId]);
+
   // Address management with zod validation
-  const [address, setAddress] = useState<string | undefined>(undefined);
+  const [address, setAddress] = useState<string | undefined>(initialAddress);
   const [addressError, setAddressError] = useState<string | undefined>(
     undefined
   );
@@ -235,7 +245,7 @@ export default function AnalyzeWizardButton({
               href="https://verify.sourcify.dev/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-green-500 underline"
+              className="text-red-500 underline"
             >
               Sourcify Verifier
             </a>
@@ -351,95 +361,105 @@ export default function AnalyzeWizardButton({
   }
 
   // Compile Namespaces useEffect
-  async function compileNamespaces() {
-    try {
-      // To avoid FUNCTION_PAYLOAD_TOO_LARGE compress the  data using brotli
-      const _brotli = await brotliPromise;
-      const _textEncoder = new TextEncoder();
-      const _compilerVersionSemver =
-        compilerBinary.match(/v(\d+\.\d+\.\d+)/)?.[1];
-      const _uncompressedBodyRequest = _textEncoder.encode(
-        JSON.stringify({
-          solcInput: solcInput,
-          solcOutput: solcOutput,
-          compilerVersion: _compilerVersionSemver,
-        })
-      );
-      const _compressedBodyRequest = _brotli.compress(
-        _uncompressedBodyRequest,
-        {
-          quality: BROTLI_QUALITY,
-        }
-      );
-
-      // Generate namespaced compiler input in the backend
-      const response = await fetch("/api/get_namespaced_input", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/octet-stream",
-        },
-        body: new Uint8Array(_compressedBodyRequest),
-      });
-      if (!response.ok) {
-        throw new Error((await response.json()).message);
-      }
-      
-      // Decode the response
-      const _arrayBuffer = await response.arrayBuffer();
-      const _textDecoder = new TextDecoder();
-      const _namespacedInput = JSON.parse(
-        _textDecoder.decode(_arrayBuffer)
-      );
-
-      //  Compile contract using compiler worker
-      const worker = new Worker("/dynSolcWorkerBundle.js");
-      worker.addEventListener(
-        "message",
-        (msg) => {
-          const _namespacedOutput: SolcOutput = JSON.parse(msg.data.solcOutput);
-          setNamespacedOutput(_namespacedOutput);
-          if (
-            _namespacedOutput.errors &&
-            _namespacedOutput.errors.some(
-              (error: { severity: string }) => error.severity === "error"
-            )
-          ) {
-            setWizardStep(WizardStep.COMPILATION_ERROR);
-          } else {
-            setWizardStep(WizardStep.SELECT_CONTRACT);
-          }
-          worker.terminate();
-        },
-        false
-      );
-      worker.postMessage({
-        solcInput: JSON.stringify(_namespacedInput),
-        solcBin: compilerBinary,
-      });
-    } catch (error) {
-      const _solcOutput: SolcOutput = {
-        errors: [
-          {
-            severity: "error",
-            formattedMessage: "Error compiling namespaces: " + error,
-          },
-        ],
-        contracts: {},
-        sources: {},
-      };
-      setSolcOutput(_solcOutput);
-      setWizardStep(WizardStep.COMPILATION_ERROR);
-      return;
-    }
-  }
   useEffect(() => {
     if (
-      wizardStep === WizardStep.COMPILING_NAMESPACED &&
-      solcOutput !== undefined
+      wizardStep !== WizardStep.COMPILING_NAMESPACED ||
+      solcOutput === undefined
     ) {
-      compileNamespaces();
+      return;
     }
-  }, [wizardStep]);
+    compileNamespaces();
+
+    async function compileNamespaces() {
+      try {
+        // To avoid FUNCTION_PAYLOAD_TOO_LARGE compress the  data using brotli
+        const _brotli = await brotliPromise;
+        const _textEncoder = new TextEncoder();
+        const _compilerVersionSemver =
+          compilerBinary.match(/v(\d+\.\d+\.\d+)/)?.[1];
+        const _uncompressedBodyRequest = _textEncoder.encode(
+          JSON.stringify({
+            solcInput: solcInput,
+            solcOutput: solcOutput,
+            compilerVersion: _compilerVersionSemver,
+          })
+        );
+        const _compressedBodyRequest = _brotli.compress(
+          _uncompressedBodyRequest,
+          {
+            quality: BROTLI_QUALITY,
+          }
+        );
+
+        // Generate namespaced compiler input in the backend
+        const response = await fetch("/api/get_namespaced_input", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/octet-stream",
+          },
+          body: new Uint8Array(_compressedBodyRequest),
+        });
+        if (!response.ok) {
+          throw new Error((await response.json()).message);
+        }
+      
+        // Decode the response
+        const _arrayBuffer = await response.arrayBuffer();
+        const _textDecoder = new TextDecoder();
+        const _namespacedInput = JSON.parse(
+          _textDecoder.decode(_arrayBuffer)
+        );
+
+        //  Compile contract using compiler worker
+        const worker = new Worker("/dynSolcWorkerBundle.js");
+        worker.addEventListener(
+          "message",
+          (msg) => {
+            const _namespacedOutput: SolcOutput = JSON.parse(msg.data.solcOutput);
+            setNamespacedOutput(_namespacedOutput);
+            if (
+              _namespacedOutput.errors &&
+              _namespacedOutput.errors.some(
+                (error: { severity: string }) => error.severity === "error"
+              )
+            ) {
+              setWizardStep(WizardStep.COMPILATION_ERROR);
+            } else {
+              setWizardStep(WizardStep.SELECT_CONTRACT);
+            }
+            worker.terminate();
+          },
+          false
+        );
+        worker.postMessage({
+          solcInput: JSON.stringify(_namespacedInput),
+          solcBin: compilerBinary,
+        });
+      } catch (error) {
+        const _solcOutput: SolcOutput = {
+          errors: [
+            {
+              severity: "error",
+              formattedMessage: "Error compiling namespaces: " + error,
+            },
+          ],
+          contracts: {},
+          sources: {},
+        };
+        setSolcOutput(_solcOutput);
+        setWizardStep(WizardStep.COMPILATION_ERROR);
+        return;
+      }
+    }
+  }, [
+    wizardStep,
+    solcOutput,
+    solcInput,
+    compilerBinary,
+    WizardStep.COMPILING_NAMESPACED,
+    WizardStep.COMPILATION_ERROR,
+    WizardStep.SELECT_CONTRACT,
+  ]);
 
   // Load storage layout function
   async function handleLoadStorageLayout() {
@@ -447,7 +467,7 @@ export default function AnalyzeWizardButton({
     if (!selectedContract || !solcInput || !solcOutput) return;
 
     // Extract storage layout using backend
-    var storageLayout: StorageLayout | undefined = undefined;
+    let storageLayout: StorageLayout | undefined = undefined;
     try {
       // To avoid Vercel FUNCTION_PAYLOAD_TOO_LARGE minimize the solcOutput
       const _brotli = await brotliPromise;
@@ -533,7 +553,7 @@ export default function AnalyzeWizardButton({
           className="w-52 bg-green-900/30 text-green-500 border border-green-500 hover:bg-green-600/40 hover:text-green-300 transition-all duration-300 px-8 py-6 text-lg animate-pulse"
           onClick={() => setDialogOpen(true)}
         >
-          <Upload className="mr-2 h-4 w-4" /> ANALYZE ADDRESS
+          <Upload className="mr-2 h-4 w-4" /> {triggerLabel}
         </Button>
       </DialogTrigger>
 
@@ -669,7 +689,7 @@ export default function AnalyzeWizardButton({
             >
               Please wait while your contract source files are being compiled.
               {
-                //@ts-ignore
+                //@ts-expect-error optimizer is not typed in SolcInput settings
                 solcInput?.settings?.optimizer?.enabled && (
                   <p>
                     Compilation might take a while because the optimizer is
@@ -708,20 +728,20 @@ export default function AnalyzeWizardButton({
 
       {/* Wizard Step 5: Fetching from Sourcify Errors */}
       {wizardStep === WizardStep.FETCHING_ERROR && (
-        <DialogContent className="bg-black border-green-500 p-6 rounded-md">
+        <DialogContent className="bg-black border-red-500 text-red-500 p-6 rounded-md [&>button]:text-red-500 [&>button:hover]:text-red-500 [&>button:hover]:bg-red-900/30">
           <DialogHeader>
-            <DialogTitle className="text-green-500">
+            <DialogTitle className="text-red-500 text-center font-bold">
               Errors while fetching the contract artifacts from Sourcify
             </DialogTitle>
             <DialogDescription
               id="upload-dialog-description"
-              className="text-green-800"
+              className="text-red-500 text-center"
             >
-              <span className="text-red-500">{fetchArtifactsError}</span>
+              {fetchArtifactsError}
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-center">
-            <FileX className="h-15 w-15 text-green-500 my-4" />
+            <FileX className="h-15 w-15 text-red-500 my-4" />
           </div>
         </DialogContent>
       )}
