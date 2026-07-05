@@ -784,23 +784,23 @@ export default function UploadWizardButton({
 
       {/* Wizard Step 4: Compilation Errors */}
       {wizardStep === WizardStep.COMPILATION_ERROR && (
-        <DialogContent className="bg-black border-green-500 p-6 rounded-md">
+        <DialogContent className="bg-black border-red-500 text-red-500 p-6 rounded-md [&>button]:text-red-500 [&>button:hover]:text-red-500 [&>button:hover]:bg-red-900/30">
           <DialogHeader>
-            <DialogTitle className="text-green-500">
+            <DialogTitle className="text-red-500 text-center font-bold">
               Errors during compilation
             </DialogTitle>
             <DialogDescription
               id="upload-dialog-description"
-              className="text-green-800"
+              className="text-red-500"
             >
               {solcOutput && solcOutput.errors && (
                 <div
                   className="max-h-60 overflow-y-auto
-                                 minimal-h-scrollbar-green
+                                 minimal-h-scrollbar-red
           [&::-webkit-scrollbar]:h-1.5
           [&::-webkit-scrollbar-track]:bg-transparent
-          [&::-webkit-scrollbar-thumb]:bg-green-500
-          hover:[&::-webkit-scrollbar-thumb]:bg-green-600 
+          [&::-webkit-scrollbar-thumb]:bg-red-500
+          hover:[&::-webkit-scrollbar-thumb]:bg-red-600
           [&::-webkit-scrollbar-thumb]:rounded-sm
                 "
                 >
@@ -814,7 +814,7 @@ export default function UploadWizardButton({
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-center">
-            <FileX className="h-15 w-15 text-green-500 my-4" />
+            <FileX className="h-15 w-15 text-red-500 my-4" />
           </div>
         </DialogContent>
       )}
