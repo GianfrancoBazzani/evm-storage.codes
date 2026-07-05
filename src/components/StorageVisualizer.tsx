@@ -1,5 +1,5 @@
-import { useContext, useRef, useState } from "react";
-import { Code2, Code, Share, X, Cross, TriangleAlert } from "lucide-react";
+import { useContext, useMemo, useState } from "react";
+import { Code2, Code, Share, X, Cross, TriangleAlert, Braces } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,6 +8,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { StorageLayoutsContext } from "@/contexts/StorageLayoutsContext";
 import {
   Dialog,
@@ -22,8 +27,13 @@ import AnalyzeWizardButton from "@/components/AnalyzeWizardButton";
 import ComparisonWizardButton from "@/components/ComparisonWizardButton";
 import ColorHash from "color-hash";
 import { normalizeUint256Literal } from "@/lib/integer-literals";
-import { erc7201 } from "@/lib/erc7201";
-import { MAX_CONTIGUOUS_ITEM_SLOT_ROWS } from "@/lib/constants";
+import { deriveNamespaceBaseSlot } from "@/lib/erc7201";
+import { buildExport } from "@/lib/storage-layout-export";
+import { useCopyFeedback } from "@/hooks/use-copy-feedback";
+import {
+  ROOT_LAYOUT_TAB,
+  MAX_CONTIGUOUS_ITEM_SLOT_ROWS,
+} from "@/lib/constants";
 
 import type {
   StorageLayout,
@@ -72,6 +82,181 @@ function unwrapStructItems(
   return result;
 }
 
+// Interface for ItemWrapper to add additional visualization properties
+interface ItemWrapper {
+  item: StorageItem;
+  color: string;
+  width: number;
+  offset: number;
+}
+
+// A single displayed row. Usually one row is one slot (label is that slot
+// number), but an item spanning more than MAX_CONTIGUOUS_ITEM_SLOT_ROWS
+// slots (e.g. a large __gap array) is collapsed into one row covering the
+// whole range instead of one row per slot it occupies.
+interface SlotRow {
+  items: ItemWrapper[];
+  label: string;
+}
+
+interface StorageLayoutWrapper {
+  slots: SlotRow[];
+  name: string;
+  baseSlot: string | undefined;
+}
+
+// Function to analyze the storage layout and build the wrapper object ot be consumed by the visualizer
+function getStorageLayoutWrapper(
+  storageItems: StorageItem[],
+  storageLayout: StorageLayout,
+  name: string,
+  baseSlot: string | undefined,
+  isNamespace: boolean
+): StorageLayoutWrapper {
+  // Unwrap struct fields so they display individually instead of as one
+  // opaque blob spanning the struct's full size.
+  storageItems = unwrapStructItems(storageItems, storageLayout.types);
+
+  // Normalize baseSlot if is custom
+  if (!isNamespace && baseSlot && baseSlot !== SLOT_ZERO) {
+    const storageItemsNormalized = JSON.parse(JSON.stringify(storageItems));
+    for (let i = 0; i < storageItemsNormalized.length; i++) {
+      storageItemsNormalized[i].slot = (
+        BigInt(normalizeUint256Literal(storageItemsNormalized[i].slot)) -
+        BigInt(baseSlot)
+      ).toString();
+    }
+    storageItems = storageItemsNormalized;
+  }
+
+  // Build astIdToColor object
+  const colorHash = new ColorHash();
+  const idToColor: { [key: string]: string } = {};
+  storageItems.forEach((item) => {
+    idToColor[`${item.contract}:${item.label}`] = colorHash.hex(item.label);
+  });
+
+  let maxSlot = 0;
+  const slots: Array<SlotRow> = [];
+  if (storageItems.length > 0) {
+    // Set maxSlot
+    maxSlot = Number(
+      storageItems
+        .map((storageItem) => storageItem.slot)
+        .reduce((previousValue, currentValue) =>
+          Number(previousValue) >= Number(currentValue)
+            ? previousValue
+            : currentValue
+        )
+    );
+    // Extend max Slot if there is an overflow in the "last" slot
+    const lastSlotTypeNumberOfBytes = Number(
+      storageLayout?.types[storageItems.slice(-1)[0].type].numberOfBytes
+    );
+    if (lastSlotTypeNumberOfBytes > 32) {
+      maxSlot += Math.ceil(lastSlotTypeNumberOfBytes / 32) - 1;
+    }
+
+    // Build slots array. Group items by slot up front: a per-slot filter
+    // over all items would make this loop quadratic on large layouts.
+    const itemsBySlot = new Map<number, StorageItem[]>();
+    for (const item of storageItems) {
+      const slot = Number(item.slot);
+      const group = itemsBySlot.get(slot);
+      if (group) {
+        group.push(item);
+      } else {
+        itemsBySlot.set(slot, [item]);
+      }
+    }
+
+    let overflowBytes = 0;
+    for (let i = 0; i <= maxSlot; i++) {
+      // copy: the overflow handling below unshifts into this array
+      const slotItems = [...(itemsBySlot.get(i) ?? [])];
+
+      // An item spanning more slots than MAX_CONTIGUOUS_ITEM_SLOT_ROWS
+      // (e.g. a large __gap array) is collapsed into a single row instead
+      // of one row per slot: rendering thousands of rows/tooltips makes
+      // the page unresponsive for no visual benefit, since every one of
+      // those rows would look identical anyway.
+      if (overflowBytes === 0 && slotItems.length === 1) {
+        const itemNumberOfBytes = Number(
+          storageLayout?.types[slotItems[0].type].numberOfBytes
+        );
+        const itemSlotSpan = Math.ceil(itemNumberOfBytes / 32);
+        if (itemSlotSpan > MAX_CONTIGUOUS_ITEM_SLOT_ROWS) {
+          const item = slotItems[0];
+          const endSlot = i + itemSlotSpan - 1;
+          slots.push({
+            items: [
+              {
+                item,
+                color: idToColor[`${item.contract}:${item.label}`],
+                width: 100,
+                offset: 0,
+              },
+            ],
+            label: `${i}–${endSlot}`,
+          });
+          i = endSlot;
+          continue;
+        }
+      }
+
+      // if previous slot is overflown
+      if (overflowBytes > 0) {
+        slotItems?.unshift(slots[slots.length - 1].items.slice(-1)[0].item);
+      }
+      // compute bytes used by storage objects in the slot it can overflow
+      let bytesUsed = overflowBytes;
+      slotItems?.forEach(
+        (item) =>
+          (bytesUsed += Number(storageLayout?.types[item.type].numberOfBytes))
+      );
+      // Wrap slot Items
+      const slotItemsWrapped: ItemWrapper[] = slotItems
+        ? slotItems?.map((item, index) => {
+            let width: number = Number(
+              storageLayout?.types[item.type].numberOfBytes
+            );
+            if (index === 0 && overflowBytes > 0) {
+              if (overflowBytes >= 32) {
+                width = 32;
+              } else {
+                width = overflowBytes;
+              }
+            }
+            if (width > 32) {
+              width = 32;
+            }
+            const wrappedItem: ItemWrapper = {
+              item: item,
+              color: idToColor[`${item.contract}:${item.label}`],
+              width: Number(width) * 3.125, // 100%/32Bytes = 3.125
+              offset: Number(item.offset) * 3.125, // 100%/32Bytes = 3.125
+            };
+            return wrappedItem;
+          })
+        : [];
+      // Set next overflow value
+      if (overflowBytes >= 32) {
+        overflowBytes -= 32;
+      } else if (bytesUsed >= 32) {
+        overflowBytes = bytesUsed - 32;
+      } else {
+        overflowBytes = 0;
+      }
+      slots.push({ items: slotItemsWrapped, label: String(i) });
+    }
+  }
+  return {
+    slots: slots,
+    name: name,
+    baseSlot: baseSlot,
+  };
+}
+
 export interface StorageVisualizerProps {
   contractName: string;
   id: number;
@@ -92,15 +277,48 @@ export default function StorageVisualizer({
   if (!storageLayoutsContext) {
     throw new Error("StorageLayoutsContext is undefined");
   }
-  const { setStorageLayouts } = storageLayoutsContext;
+  const { storageLayouts: allLayouts, setStorageLayouts } = storageLayoutsContext;
 
   // Parent dialog controlled state
   const [isAddContractDialogOpen, setAddContractDialogOpen] = useState(false);
 
-  // Share button "Copied!" confirmation (forces tooltip open for 2s after copy)
-  const [copied, setCopied] = useState(false);
-  const [shareTooltipOpen, setShareTooltipOpen] = useState(false);
-  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
+  // "Copied!"/"Copy failed" tooltip feedback for the share and copy-JSON buttons
+  const shareCopy = useCopyFeedback();
+  const layoutCopy = useCopyFeedback();
+
+  // Copy-JSON popover + controlled Tabs
+  const [layoutPopoverOpen, setLayoutPopoverOpen] = useState(false);
+  const [selectedTab, setSelectedTab] = useState<string>(ROOT_LAYOUT_TAB);
+  // App keys visualizers by index, so on close/insert this instance can be
+  // adopted by a different contract whose layout lacks the remembered
+  // namespace tab — fall back to the root tab instead of rendering an
+  // unmatched Tabs value and exporting a nonexistent slice.
+  const activeTab =
+    selectedTab === ROOT_LAYOUT_TAB || storageLayout.namespaces?.[selectedTab]
+      ? selectedTab
+      : ROOT_LAYOUT_TAB;
+
+  function handleCopyJson(mode: "full" | "tab" | "all") {
+    // Optimistic feedback: the tooltip must already read "Copied!" when the
+    // popover closes (see useCopyFeedback); an export or clipboard failure
+    // downgrades it to "Copy failed".
+    void layoutCopy.copy(
+      () =>
+        mode === "all"
+          ? buildExport({ mode: "all", layouts: allLayouts })
+          : buildExport({
+              mode,
+              contractName,
+              chainId,
+              address,
+              storageLayout,
+              namespace:
+                activeTab === ROOT_LAYOUT_TAB ? undefined : activeTab,
+            }),
+      { optimistic: true }
+    );
+    setLayoutPopoverOpen(false);
+  }
 
   // Close Visualizer
   function handleClose() {
@@ -142,206 +360,41 @@ export default function StorageVisualizer({
     }));
   }
 
-  // Interface for ItemWrapper to add additional visualization properties
-  interface ItemWrapper {
-    item: StorageItem;
-    color: string;
-    width: number;
-    offset: number;
-  }
+  // Build the per-tab wrapper array once per layout: controlled Tabs and
+  // tooltip state make every click/hover re-render this component, and the
+  // wrapper computation (struct unwrapping, per-slot scans) is too heavy to
+  // redo each time.
+  const storageLayouts = useMemo(() => {
+    // normalizeUint256Literal returns the zero slot for an absent literal
+    const baseSlotNormalized = normalizeUint256Literal(storageLayout.baseSlot);
 
-  // A single displayed row. Usually one row is one slot (label is that slot
-  // number), but an item spanning more than MAX_CONTIGUOUS_ITEM_SLOT_ROWS
-  // slots (e.g. a large __gap array) is collapsed into one row covering the
-  // whole range instead of one row per slot it occupies.
-  interface SlotRow {
-    items: ItemWrapper[];
-    label: string;
-  }
+    // Root layout
+    const wrappers: StorageLayoutWrapper[] = [
+      getStorageLayoutWrapper(
+        storageLayout.storage,
+        storageLayout,
+        ROOT_LAYOUT_TAB,
+        baseSlotNormalized,
+        false
+      ),
+    ];
 
-  interface StorageLayoutWrapper {
-    slots: SlotRow[];
-    name: string;
-    baseSlot: string;
-  }
-
-  // Function to analyze the storage layout and build the wrapper object ot be consumed by the visualizer
-  function getStorageLayoutWrapper(
-    storageItems: StorageItem[],
-    storageLayout: StorageLayout,
-    name: string = "",
-    baseSlot: string,
-    isNamespace: boolean = false
-  ): StorageLayoutWrapper {
-    // Unwrap struct fields so they display individually instead of as one
-    // opaque blob spanning the struct's full size.
-    storageItems = unwrapStructItems(storageItems, storageLayout.types);
-
-    // Normalize baseSlot if is custom
-    if (!isNamespace && baseSlot !== SLOT_ZERO) {
-      const storageItemsNormalized = JSON.parse(JSON.stringify(storageItems));
-      for (let i = 0; i < storageItemsNormalized.length; i++) {
-        storageItemsNormalized[i].slot = (
-          BigInt(normalizeUint256Literal(storageItemsNormalized[i].slot)) -
-          BigInt(baseSlot)
-        ).toString();
-      }
-      storageItems = storageItemsNormalized;
-    }
-
-    // Build astIdToColor object
-    const colorHash = new ColorHash();
-    const idToColor: { [key: string]: string } = {};
-    storageItems.forEach((item) => {
-      idToColor[`${item.contract}:${item.label}`] = colorHash.hex(item.label);
-    });
-
-    let maxSlot = 0;
-    const slots: Array<SlotRow> = [];
-    if (storageItems.length > 0) {
-      // Set maxSlot
-      maxSlot = Number(
-        storageItems
-          .map((storageItem) => storageItem.slot)
-          .reduce((previousValue, currentValue) =>
-            Number(previousValue) >= Number(currentValue)
-              ? previousValue
-              : currentValue
-          )
-      );
-      // Extend max Slot if there is an overflow in the "last" slot
-      const lastSlotTypeNumberOfBytes = Number(
-        storageLayout?.types[storageItems.slice(-1)[0].type].numberOfBytes
-      );
-      if (lastSlotTypeNumberOfBytes > 32) {
-        maxSlot += Math.ceil(lastSlotTypeNumberOfBytes / 32) - 1;
-      }
-
-      // Build slots array
-      let overflowBytes = 0;
-      for (let i = 0; i <= maxSlot; i++) {
-        const slotItems = storageItems.filter(
-          (item) => Number(item.slot) === i
-        );
-
-        // An item spanning more slots than MAX_CONTIGUOUS_ITEM_SLOT_ROWS
-        // (e.g. a large __gap array) is collapsed into a single row instead
-        // of one row per slot: rendering thousands of rows/tooltips makes
-        // the page unresponsive for no visual benefit, since every one of
-        // those rows would look identical anyway.
-        if (overflowBytes === 0 && slotItems.length === 1) {
-          const itemNumberOfBytes = Number(
-            storageLayout?.types[slotItems[0].type].numberOfBytes
-          );
-          const itemSlotSpan = Math.ceil(itemNumberOfBytes / 32);
-          if (itemSlotSpan > MAX_CONTIGUOUS_ITEM_SLOT_ROWS) {
-            const item = slotItems[0];
-            const endSlot = i + itemSlotSpan - 1;
-            slots.push({
-              items: [
-                {
-                  item,
-                  color: idToColor[`${item.contract}:${item.label}`],
-                  width: 100,
-                  offset: 0,
-                },
-              ],
-              label: `${i}–${endSlot}`,
-            });
-            i = endSlot;
-            continue;
-          }
-        }
-
-        // if previous slot is overflown
-        if (overflowBytes > 0) {
-          slotItems?.unshift(slots[slots.length - 1].items.slice(-1)[0].item);
-        }
-        // compute bytes used by storage objects in the slot it can overflow
-        let bytesUsed = overflowBytes;
-        slotItems?.forEach(
-          (item) =>
-            (bytesUsed += Number(storageLayout?.types[item.type].numberOfBytes))
-        );
-        // Wrap slot Items
-        const slotItemsWrapped: ItemWrapper[] = slotItems
-          ? slotItems?.map((item, index) => {
-              let width: number = Number(
-                storageLayout?.types[item.type].numberOfBytes
-              );
-              if (index === 0 && overflowBytes > 0) {
-                if (overflowBytes >= 32) {
-                  width = 32;
-                } else {
-                  width = overflowBytes;
-                }
-              }
-              if (width > 32) {
-                width = 32;
-              }
-              const wrappedItem: ItemWrapper = {
-                item: item,
-                color: idToColor[`${item.contract}:${item.label}`],
-                width: Number(width) * 3.125, // 100%/32Bytes = 3.125
-                offset: Number(item.offset) * 3.125, // 100%/32Bytes = 3.125
-              };
-              return wrappedItem;
-            })
-          : [];
-        // Set next overflow value
-        if (overflowBytes >= 32) {
-          overflowBytes -= 32;
-        } else if (bytesUsed >= 32) {
-          overflowBytes = bytesUsed - 32;
-        } else {
-          overflowBytes = 0;
-        }
-        slots.push({ items: slotItemsWrapped, label: String(i) });
-      }
-    }
-    return {
-      slots: slots,
-      name: name,
-      baseSlot: baseSlot,
-    };
-  }
-
-  // Get root layout base slot
-  let baseSlotNormalized = SLOT_ZERO;
-
-  // Parse and set baseSlot if it is present and defined
-  if ("baseSlot" in storageLayout && storageLayout.baseSlot) {
-    baseSlotNormalized = normalizeUint256Literal(storageLayout.baseSlot);
-  }
-
-  // Build storage layouts array for the visualizer
-  const storageLayouts: StorageLayoutWrapper[] = [];
-
-  // Root layout
-  storageLayouts.push(
-    getStorageLayoutWrapper(
-      storageLayout.storage,
-      storageLayout,
-      "Root layout",
-      baseSlotNormalized,
-      false
-    )
-  );
-
-  // ERC-7201 namespaces
-  if (storageLayout.namespaces !== undefined) {
-    Object.keys(storageLayout.namespaces).forEach((namespaceName) => {
-      storageLayouts.push(
+    // ERC-7201 namespaces
+    for (const [namespaceName, items] of Object.entries(
+      storageLayout.namespaces ?? {}
+    )) {
+      wrappers.push(
         getStorageLayoutWrapper(
-          storageLayout.namespaces![namespaceName],
+          items,
           storageLayout,
           namespaceName,
-          erc7201(namespaceName.split(":")[1]),
+          deriveNamespaceBaseSlot(namespaceName),
           true
         )
       );
-    });
-  }
+    }
+    return wrappers;
+  }, [storageLayout]);
 
   return (
     <Card className="bg-black border-green-500 md:mb-4 overflow-hidden relative py-0 gap-0 h-full w-full transition-all duration-500 ease-in-out">
@@ -382,20 +435,16 @@ export default function StorageVisualizer({
                 </TooltipContent>
               </Tooltip>
 
-              <Tooltip open={copied || shareTooltipOpen} onOpenChange={setShareTooltipOpen}>
+              <Tooltip {...shareCopy.tooltipProps}>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={async () => {
-                      try {
-                        await navigator.clipboard.writeText(
+                    onClick={() => {
+                      void shareCopy.copy(
+                        () =>
                           `${window.location.origin}/?address=${address}&chainId=${chainId}`
-                        );
-                        if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
-                        setCopied(true);
-                        copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
-                      } catch { /* clipboard unavailable */ }
+                      );
                     }}
                     className="h-6 w-6 text-green-500 hover:bg-green-900/30 hover:text-green-500 hover:rounded"
                   >
@@ -403,11 +452,61 @@ export default function StorageVisualizer({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent className="bg-black border-green-500 border text-green-500 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
-                  {copied ? "Copied!" : "Share"}
+                  {shareCopy.label("Share")}
                 </TooltipContent>
               </Tooltip>
             </>
           )}
+          <Popover open={layoutPopoverOpen} onOpenChange={setLayoutPopoverOpen}>
+            <Tooltip {...layoutCopy.tooltipProps}>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-green-500 hover:bg-green-900/30 hover:text-green-500 hover:rounded"
+                  >
+                    <Braces className="h-3 w-3" />
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent className="bg-black border-green-500 border text-green-500 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
+                {layoutCopy.label("Copy Storage Layout")}
+              </TooltipContent>
+            </Tooltip>
+            <PopoverContent
+              align="end"
+              className="bg-black border-green-500 border text-green-500 p-1 rounded-md shadow-md text-xs w-56"
+            >
+              <div className="flex flex-col">
+                <Button
+                  variant="ghost"
+                  onClick={() => handleCopyJson("full")}
+                  className="w-full justify-start h-8 text-xs text-green-500 hover:bg-green-900/30 hover:text-green-500"
+                >
+                  Copy full layout
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => handleCopyJson("tab")}
+                  className="w-full justify-start h-8 text-xs text-green-500 hover:bg-green-900/30 hover:text-green-500"
+                >
+                  <span className="truncate max-w-[180px]">
+                    Copy current tab ({activeTab})
+                  </span>
+                </Button>
+                {allLayouts.length >= 2 && (
+                  <Button
+                    variant="ghost"
+                    onClick={() => handleCopyJson("all")}
+                    className="w-full justify-start h-8 text-xs text-green-500 hover:bg-green-900/30 hover:text-green-500"
+                  >
+                    Copy all open contracts
+                  </Button>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
           <ComparisonWizardButton />
 
           {/* Add Contract Dialog */}
@@ -477,7 +576,7 @@ export default function StorageVisualizer({
       </div>
 
       {/* Tabs*/}
-      <Tabs defaultValue="Root layout" className="w-full">
+      <Tabs value={activeTab} onValueChange={setSelectedTab} className="w-full">
         <div
           className="border-b border-green-500/30 bg-green-900/10 overflow-x-auto
                   minimal-h-scrollbar-green
@@ -506,9 +605,11 @@ export default function StorageVisualizer({
         {/*Content */}
         {storageLayouts.map((layout, index) => (
           <TabsContent value={layout.name} className="mt-0">
-            <div className="px-4 pb-2 text-green-500 text-[8px] md:text-[11px]">
-              base slot: {layout.baseSlot}
-            </div>
+            {layout.baseSlot !== undefined && (
+              <div className="px-4 pb-2 text-green-500 text-[8px] md:text-[11px]">
+                base slot: {layout.baseSlot}
+              </div>
+            )}
             {layout.slots.length === 0 && (
               <div className="flex items-center justify-center gap-2 px-4 pb-2 my-5 text-green-500">
                 <TriangleAlert className="h-4 w-4" />

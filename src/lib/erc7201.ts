@@ -13,3 +13,19 @@ export function erc7201(id: string): `0x${string}` {
   const padded = v2.toString(16).padStart(64, "0");
   return `0x${padded}` as `0x${string}`;
 }
+
+/**
+ * Derives the absolute base slot for a `@custom:storage-location` namespace
+ * key, e.g. "erc7201:example.main". Only the erc7201 formula is supported;
+ * the id portion (which may itself contain colons) is fed to erc7201().
+ * Returns undefined for any other formula prefix so callers can omit the
+ * value instead of deriving a meaningless one.
+ */
+export function deriveNamespaceBaseSlot(
+  namespaceKey: string
+): `0x${string}` | undefined {
+  const prefix = "erc7201:";
+  if (!namespaceKey.startsWith(prefix)) return undefined;
+  const id = namespaceKey.slice(prefix.length);
+  return id.length > 0 ? erc7201(id) : undefined;
+}

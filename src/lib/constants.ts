@@ -13,4 +13,5 @@ export const EVM_VERSIONS = [
   "constantinople",
 ];
 export const BROTLI_QUALITY = 9;
+export const ROOT_LAYOUT_TAB = "Root layout";
 export const MAX_CONTIGUOUS_ITEM_SLOT_ROWS = 64;
