@@ -5,6 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import AnalyzeWizardButton from "@/components/AnalyzeWizardButton";
 
 export type ShareLinkMissKind = "not-cached" | "error" | "invalid";
 
@@ -31,6 +32,12 @@ export default function ShareLinkNotFound({
         ? "ERROR — STORAGE LAYOUT NOT FOUND"
         : "ERROR — INVALID SHARE LINK";
 
+  // A valid chainId/address just means this specific contract hasn't been
+  // compiled and cached before - the user can still generate its layout
+  // themselves via the normal wizard, pre-filled so they don't have to
+  // re-type the address. An "invalid" link has nothing valid to pre-fill.
+  const canGenerate = kind !== "invalid";
+
   return (
     <Dialog open onOpenChange={(open) => !open && onDismiss()}>
       <DialogContent className="bg-black border-red-500 text-red-500 p-6 [&>button]:text-red-500 [&>button:hover]:text-red-500 [&>button:hover]:bg-red-900/30">
@@ -48,6 +55,15 @@ export default function ShareLinkNotFound({
                 : "Storage layout not found."}
           </DialogDescription>
         </DialogHeader>
+        {canGenerate && (
+          <div className="flex justify-center [&_button]:border-red-500 [&_button]:text-red-500 [&_button:hover]:bg-red-900/30 [&_button:hover]:text-red-500">
+            <AnalyzeWizardButton
+              initialChainId={Number(chainId)}
+              initialAddress={address}
+              triggerLabel="Generate this storage layout"
+            />
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
