@@ -1,6 +1,6 @@
 import { useContext, useState, useEffect } from "react";
 import { StorageLayoutsContext } from "@/contexts/StorageLayoutsContext";
-import { Upload, Loader2, FileX, ChevronsUpDown, Check } from "lucide-react";
+import { Search, Loader2, FileX, ChevronsUpDown, Check } from "lucide-react";
 import {
   Dialog,
   DialogTrigger,
@@ -595,7 +595,7 @@ export default function AnalyzeWizardButton({
           )}
           onClick={() => setDialogOpen(true)}
         >
-          <Upload className="mr-2 h-4 w-4" /> {triggerLabel}
+          <Search className="mr-2 h-4 w-4" /> {triggerLabel}
         </Button>
       </DialogTrigger>
 
