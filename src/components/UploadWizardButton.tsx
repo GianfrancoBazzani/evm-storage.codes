@@ -24,6 +24,7 @@ import {
   MIN_NAMESPACED_COMPATIBLE_SOLC_VERSION,
   BROTLI_QUALITY,
 } from "@/lib/constants";
+import { compilerCrashSolcOutput } from "@/lib/compiler-errors";
 import * as versions from "compare-versions";
 import brotliPromise from "brotli-wasm";
 
@@ -221,10 +222,16 @@ export default function UploadWizardButton({
     const _solcInput: SolcInput = { sources: sources };
     // @ts-expect-error language is not typed in SolcInput
     _solcInput.language = "Solidity";
+    // Only storageLayout + ast are ever used (see extract_storage_layout.js
+    // and upgrades-core's own makeNamespacedInput, which narrows to the same
+    // two fields for the same reason). Requesting "*" also forces bytecode
+    // generation, optimizer runs, gas estimation, and metadata hashing for
+    // no benefit - for large/complex contracts this can be enough to
+    // exhaust some solc-bin wasm builds' static heap and crash mid-compile.
     _solcInput.settings = {
       outputSelection: {
         "*": {
-          "*": ["*"],
+          "*": ["storageLayout"],
           "": ["ast"],
         },
       },
@@ -253,6 +260,12 @@ export default function UploadWizardButton({
     worker.addEventListener(
       "message",
       (msg) => {
+        if (msg.data.error) {
+          setSolcOutput(compilerCrashSolcOutput(msg.data.error));
+          setWizardStep(WizardStep.COMPILATION_ERROR);
+          worker.terminate();
+          return;
+        }
         const _solcOutput: SolcOutput = JSON.parse(msg.data.solcOutput);
         setSolcOutput(_solcOutput);
 
@@ -284,6 +297,15 @@ export default function UploadWizardButton({
             setWizardStep(WizardStep.SELECT_CONTRACT);
           }
         }
+        worker.terminate();
+      },
+      false
+    );
+    worker.addEventListener(
+      "error",
+      (event) => {
+        setSolcOutput(compilerCrashSolcOutput(event.message));
+        setWizardStep(WizardStep.COMPILATION_ERROR);
         worker.terminate();
       },
       false
@@ -342,6 +364,12 @@ export default function UploadWizardButton({
         worker.addEventListener(
           "message",
           (msg) => {
+            if (msg.data.error) {
+              setSolcOutput(compilerCrashSolcOutput(msg.data.error));
+              setWizardStep(WizardStep.COMPILATION_ERROR);
+              worker.terminate();
+              return;
+            }
             const _namespacedOutput: SolcOutput = JSON.parse(msg.data.solcOutput);
             setNamespacedOutput(_namespacedOutput);
             if (
@@ -354,6 +382,15 @@ export default function UploadWizardButton({
             } else {
               setWizardStep(WizardStep.SELECT_CONTRACT);
             }
+            worker.terminate();
+          },
+          false
+        );
+        worker.addEventListener(
+          "error",
+          (event) => {
+            setSolcOutput(compilerCrashSolcOutput(event.message));
+            setWizardStep(WizardStep.COMPILATION_ERROR);
             worker.terminate();
           },
           false

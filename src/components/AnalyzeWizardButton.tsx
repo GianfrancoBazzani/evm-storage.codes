@@ -42,6 +42,7 @@ import {
   BROTLI_QUALITY,
 } from "@/lib/constants";
 import { ethAddressSchema } from "@/lib/ethAddress";
+import { compilerCrashSolcOutput } from "@/lib/compiler-errors";
 import { cn } from "@/lib/utils";
 import * as versions from "compare-versions";
 import brotliPromise from "brotli-wasm";
@@ -292,9 +293,15 @@ export default function AnalyzeWizardButton({
     const _compilerBinary = `solc-emscripten-wasm32-v${compilation.compilerVersion}.js`;
     const _solcInput: SolcInput = stdJsonInput;
     _solcInput.settings = _solcInput.settings || {};
+    // Only storageLayout + ast are ever used (see extract_storage_layout.js
+    // and upgrades-core's own makeNamespacedInput, which narrows to the same
+    // two fields for the same reason). Requesting "*" also forces bytecode
+    // generation, optimizer runs, gas estimation, and metadata hashing for
+    // no benefit - for large/complex old contracts this can be enough to
+    // exhaust some solc-bin wasm builds' static heap and crash mid-compile.
     _solcInput.settings.outputSelection = {
       "*": {
-        "*": ["*"],
+        "*": ["storageLayout"],
         "": ["ast"],
       },
     };
@@ -316,6 +323,12 @@ export default function AnalyzeWizardButton({
     worker.addEventListener(
       "message",
       (msg) => {
+        if (msg.data.error) {
+          setSolcOutput(compilerCrashSolcOutput(msg.data.error));
+          setWizardStep(WizardStep.COMPILATION_ERROR);
+          worker.terminate();
+          return;
+        }
         const _solcOutput: SolcOutput = JSON.parse(msg.data.solcOutput);
         setSolcOutput(_solcOutput);
 
@@ -350,6 +363,15 @@ export default function AnalyzeWizardButton({
             setWizardStep(WizardStep.SELECT_CONTRACT);
           }
         }
+        worker.terminate();
+      },
+      false
+    );
+    worker.addEventListener(
+      "error",
+      (event) => {
+        setSolcOutput(compilerCrashSolcOutput(event.message));
+        setWizardStep(WizardStep.COMPILATION_ERROR);
         worker.terminate();
       },
       false
@@ -415,6 +437,12 @@ export default function AnalyzeWizardButton({
         worker.addEventListener(
           "message",
           (msg) => {
+            if (msg.data.error) {
+              setSolcOutput(compilerCrashSolcOutput(msg.data.error));
+              setWizardStep(WizardStep.COMPILATION_ERROR);
+              worker.terminate();
+              return;
+            }
             const _namespacedOutput: SolcOutput = JSON.parse(msg.data.solcOutput);
             setNamespacedOutput(_namespacedOutput);
             if (
@@ -427,6 +455,15 @@ export default function AnalyzeWizardButton({
             } else {
               setWizardStep(WizardStep.SELECT_CONTRACT);
             }
+            worker.terminate();
+          },
+          false
+        );
+        worker.addEventListener(
+          "error",
+          (event) => {
+            setSolcOutput(compilerCrashSolcOutput(event.message));
+            setWizardStep(WizardStep.COMPILATION_ERROR);
             worker.terminate();
           },
           false

@@ -18975,6 +18975,28 @@ function _regenerator() { /*! regenerator-runtime -- Copyright (c) 2014-present,
 function _regeneratorDefine2(e, r, n, t) { var i = Object.defineProperty; try { i({}, "", {}); } catch (e) { i = 0; } _regeneratorDefine2 = function _regeneratorDefine(e, r, n, t) { function o(r, n) { _regeneratorDefine2(e, r, function (e) { return this._invoke(r, n, e); }); } r ? i ? i(e, r, { value: n, enumerable: !t, configurable: !t, writable: !t }) : e[r] = n : (o("next", 0), o("throw", 1), o("return", 2)); }, _regeneratorDefine2(e, r, n, t); }
 function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
 function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; } // Minimal worker to dynamically load any published  version of solc
+function reportError(error) {
+  self.postMessage({
+    error: error instanceof Error ? error.message : String(error)
+  });
+}
+
+// Some solc-js wasm builds (particularly older ones, e.g. 0.7.x) can crash
+// with a RuntimeError ("memory access out of bounds") on very large inputs -
+// a known wasm-build limitation (see
+// https://github.com/ethereum/solidity/issues/13966), not something this
+// app can fix. That crash surfaces as an *unhandled promise rejection*
+// inside the compiler's own internals rather than a normal thrown
+// exception, so it wouldn't be caught by a try/catch around compile(), and
+// it never reaches the main thread's "message" (or even "error") listener -
+// the wizard would otherwise be stuck on the compiling step forever.
+self.addEventListener("unhandledrejection", function (event) {
+  reportError(event.reason);
+});
+self.addEventListener("error", function (event) {
+  var _event$error;
+  reportError((_event$error = event.error) !== null && _event$error !== void 0 ? _event$error : event.message);
+});
 self.onmessage = /*#__PURE__*/function () {
   var _ref = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee(msg) {
     var compiler;
@@ -18985,12 +19007,18 @@ self.onmessage = /*#__PURE__*/function () {
           // msg.data.solcBin: Name of the target  solc binary to be used
           // msg.data.solcInput: Raw JSON input for the compiler
           // Returns:
-          // solcOutput: raw JSON output from the compiler
-          importScripts("https://binaries.soliditylang.org/emscripten-wasm32/".concat(msg.data.solcBin));
-          compiler = (0, _wrapper["default"])(self.Module);
-          self.postMessage({
-            solcOutput: compiler.compile(msg.data.solcInput)
-          });
+          // solcOutput: raw JSON output from the compiler, or `error` if the
+          // compiler itself crashed (as opposed to producing compiler-level
+          // errors, which still come back as a normal solcOutput.errors array).
+          try {
+            importScripts("https://binaries.soliditylang.org/emscripten-wasm32/".concat(msg.data.solcBin));
+            compiler = (0, _wrapper["default"])(self.Module);
+            self.postMessage({
+              solcOutput: compiler.compile(msg.data.solcInput)
+            });
+          } catch (error) {
+            reportError(error);
+          }
         case 1:
           return _context.a(2);
       }
