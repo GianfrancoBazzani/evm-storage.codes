@@ -28,9 +28,9 @@ export default function Landing({ notice }: { notice?: ReactNode }) {
       chainId: "1",
     },
     {
-      name: "Openfort EIP-7702",
-      address: "0x9C5b2765fe0aC3f0566CD6B1c96c0cCD393EE49c",
-      chainId: "84532",
+      name: "PufferVaultV5",
+      address: "0x3b2fdFdEFE919dBcCE0bc5ac426097d5523B8AFA",
+      chainId: "1",
     },
     {
       name: "MorphoToken",
