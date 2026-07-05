@@ -56,11 +56,12 @@ export default function ShareLinkNotFound({
           </DialogDescription>
         </DialogHeader>
         {canGenerate && (
-          <div className="flex justify-center [&_button]:border-red-500 [&_button]:text-red-500 [&_button:hover]:bg-red-900/30 [&_button:hover]:text-red-500">
+          <div className="flex justify-center">
             <AnalyzeWizardButton
               initialChainId={Number(chainId)}
               initialAddress={address}
               triggerLabel="Generate this storage layout"
+              triggerClassName="w-auto max-w-full animate-none whitespace-normal px-5 py-4 text-base leading-tight"
             />
           </div>
         )}
