@@ -42,6 +42,7 @@ import {
   BROTLI_QUALITY,
 } from "@/lib/constants";
 import { ethAddressSchema } from "@/lib/ethAddress";
+import { compilerCrashSolcOutput } from "@/lib/compiler-errors";
 import { cn } from "@/lib/utils";
 import * as versions from "compare-versions";
 import brotliPromise from "brotli-wasm";
@@ -292,9 +293,15 @@ export default function AnalyzeWizardButton({
     const _compilerBinary = `solc-emscripten-wasm32-v${compilation.compilerVersion}.js`;
     const _solcInput: SolcInput = stdJsonInput;
     _solcInput.settings = _solcInput.settings || {};
+    // Only storageLayout + ast are ever used (see extract_storage_layout.js
+    // and upgrades-core's own makeNamespacedInput, which narrows to the same
+    // two fields for the same reason). Requesting "*" also forces bytecode
+    // generation, optimizer runs, gas estimation, and metadata hashing for
+    // no benefit - for large/complex old contracts this can be enough to
+    // exhaust some solc-bin wasm builds' static heap and crash mid-compile.
     _solcInput.settings.outputSelection = {
       "*": {
-        "*": ["*"],
+        "*": ["storageLayout"],
         "": ["ast"],
       },
     };
@@ -316,6 +323,12 @@ export default function AnalyzeWizardButton({
     worker.addEventListener(
       "message",
       (msg) => {
+        if (msg.data.error) {
+          setSolcOutput(compilerCrashSolcOutput(msg.data.error));
+          setWizardStep(WizardStep.COMPILATION_ERROR);
+          worker.terminate();
+          return;
+        }
         const _solcOutput: SolcOutput = JSON.parse(msg.data.solcOutput);
         setSolcOutput(_solcOutput);
 
@@ -350,6 +363,15 @@ export default function AnalyzeWizardButton({
             setWizardStep(WizardStep.SELECT_CONTRACT);
           }
         }
+        worker.terminate();
+      },
+      false
+    );
+    worker.addEventListener(
+      "error",
+      (event) => {
+        setSolcOutput(compilerCrashSolcOutput(event.message));
+        setWizardStep(WizardStep.COMPILATION_ERROR);
         worker.terminate();
       },
       false
@@ -415,6 +437,12 @@ export default function AnalyzeWizardButton({
         worker.addEventListener(
           "message",
           (msg) => {
+            if (msg.data.error) {
+              setSolcOutput(compilerCrashSolcOutput(msg.data.error));
+              setWizardStep(WizardStep.COMPILATION_ERROR);
+              worker.terminate();
+              return;
+            }
             const _namespacedOutput: SolcOutput = JSON.parse(msg.data.solcOutput);
             setNamespacedOutput(_namespacedOutput);
             if (
@@ -427,6 +455,15 @@ export default function AnalyzeWizardButton({
             } else {
               setWizardStep(WizardStep.SELECT_CONTRACT);
             }
+            worker.terminate();
+          },
+          false
+        );
+        worker.addEventListener(
+          "error",
+          (event) => {
+            setSolcOutput(compilerCrashSolcOutput(event.message));
+            setWizardStep(WizardStep.COMPILATION_ERROR);
             worker.terminate();
           },
           false
@@ -748,23 +785,23 @@ export default function AnalyzeWizardButton({
 
       {/* Wizard Step 6: Compilation Errors */}
       {wizardStep === WizardStep.COMPILATION_ERROR && (
-        <DialogContent className="bg-black border-green-500 p-6 rounded-md">
+        <DialogContent className="bg-black border-red-500 text-red-500 p-6 rounded-md [&>button]:text-red-500 [&>button:hover]:text-red-500 [&>button:hover]:bg-red-900/30">
           <DialogHeader>
-            <DialogTitle className="text-green-500">
+            <DialogTitle className="text-red-500 text-center font-bold">
               Errors during compilation
             </DialogTitle>
             <DialogDescription
               id="upload-dialog-description"
-              className="text-green-800"
+              className="text-red-500"
             >
               {solcOutput && solcOutput.errors && (
                 <div
                   className="max-h-60 overflow-y-auto
-                                 minimal-h-scrollbar-green
+                                 minimal-h-scrollbar-red
           [&::-webkit-scrollbar]:h-1.5
           [&::-webkit-scrollbar-track]:bg-transparent
-          [&::-webkit-scrollbar-thumb]:bg-green-500
-          hover:[&::-webkit-scrollbar-thumb]:bg-green-600 
+          [&::-webkit-scrollbar-thumb]:bg-red-500
+          hover:[&::-webkit-scrollbar-thumb]:bg-red-600
           [&::-webkit-scrollbar-thumb]:rounded-sm
                 "
                 >
@@ -778,7 +815,7 @@ export default function AnalyzeWizardButton({
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-center">
-            <FileX className="h-15 w-15 text-green-500 my-4" />
+            <FileX className="h-15 w-15 text-red-500 my-4" />
           </div>
         </DialogContent>
       )}

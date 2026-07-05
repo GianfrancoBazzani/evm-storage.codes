@@ -138,3 +138,9 @@
   scrollbar-color: #22c55e transparent; /* Sets thumb color to green-500 and track to transparent */
   /* #22c55e is the hex code for Tailwind's green-500 */
 }
+
+.minimal-h-scrollbar-red {
+  scrollbar-width: thin; /* Makes the scrollbar thin */
+  scrollbar-color: #ef4444 transparent; /* Sets thumb color to red-500 and track to transparent */
+  /* #ef4444 is the hex code for Tailwind's red-500 */
+}
