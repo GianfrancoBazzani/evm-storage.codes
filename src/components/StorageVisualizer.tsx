@@ -42,6 +42,7 @@ import type {
   TypeItemMembers,
   StructMember,
 } from "@openzeppelin/upgrades-core";
+import { proxyKindLabel } from "@/lib/eip1967";
 import type { Eip1967ProxyInfo } from "@/lib/eip1967";
 
 const SLOT_ZERO =
@@ -592,7 +593,9 @@ export default function StorageVisualizer({
 
       {proxyInfo && (
         <div className="border-b border-green-500/30 bg-green-900/10 px-4 py-2 text-[11px] text-green-500">
-          <span className="font-bold">EIP-1967 proxy detected.</span>{" "}
+          <span className="font-bold">
+            {proxyKindLabel(proxyInfo.kind)} detected.
+          </span>{" "}
           <span>Proxy storage: {truncateAddress(proxyInfo.proxyAddress)}</span>
           <span className="mx-2">|</span>
           <span>

@@ -249,7 +249,15 @@ export default function AnalyzeWizardButton({
       return;
     }
 
-    const detectedProxyInfo = await fetchEip1967ProxyInfo(chainId, address);
+    // Proxy detection is a convenience: if it fails (no public RPC for the
+    // chain, RPCs down, ...) fall back to analyzing the address as-is
+    // rather than blocking the whole flow.
+    let detectedProxyInfo: Eip1967ProxyInfo | undefined;
+    try {
+      detectedProxyInfo = await fetchEip1967ProxyInfo(chainId, address);
+    } catch (error) {
+      console.warn("EIP-1967 proxy detection failed:", error);
+    }
     const sourcifyAddress = detectedProxyInfo?.implementationAddress ?? address;
     setProxyInfo(detectedProxyInfo);
     setSourceAddress(sourcifyAddress);
@@ -625,27 +633,20 @@ export default function AnalyzeWizardButton({
     chainId: number,
     address: string
   ): Promise<Eip1967ProxyInfo | undefined> {
-    try {
-      const response = await fetch("/api/get_eip1967_proxy_info", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chainId, address }),
-      });
-      if (!response.ok) {
-        console.warn(
-          "EIP-1967 proxy detection failed:",
-          (await response.json()).message
-        );
-        return undefined;
-      }
-
-      const proxyInfoResponse =
-        (await response.json()) as Eip1967ProxyInfoResponse;
-      return proxyInfoResponse.proxyInfo;
-    } catch (error) {
-      console.warn("EIP-1967 proxy detection failed:", error);
-      return undefined;
+    const response = await fetch("/api/get_eip1967_proxy_info", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chainId, address }),
+    });
+    if (!response.ok) {
+      throw new Error(
+        (await response.json()).message ?? "EIP-1967 proxy detection failed."
+      );
     }
+
+    const proxyInfoResponse =
+      (await response.json()) as Eip1967ProxyInfoResponse;
+    return proxyInfoResponse.proxyInfo;
   }
 
   return (
@@ -775,7 +776,7 @@ export default function AnalyzeWizardButton({
               from sourcify
               {proxyInfo && (
                 <span className="block text-green-500 mt-2">
-                  EIP-1967 proxy detected. Fetching the sources of the active
+                  Upgradeable proxy detected. Fetching the sources of the active
                   implementation at {proxyInfo.implementationAddress}.
                 </span>
               )}
@@ -909,7 +910,7 @@ export default function AnalyzeWizardButton({
               contract to load storage layout.
               {proxyInfo && (
                 <span className="block text-green-500 mt-2">
-                  {address} is an EIP-1967 proxy: these contracts come from its
+                  {address} is an upgradeable proxy: these contracts come from its
                   active implementation at {proxyInfo.implementationAddress}.
                 </span>
               )}

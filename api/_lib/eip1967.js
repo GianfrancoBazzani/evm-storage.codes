@@ -8,6 +8,13 @@ import {
 } from "@openzeppelin/upgrades-core";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+// keccak256("eip1967.proxy.implementation") - 1. upgrades-core's
+// getImplementationAddress also falls back to the pre-EIP-1967 ZeppelinOS
+// slot (keccak256("org.zeppelinos.proxy.implementation")), so when it
+// resolves an implementation we read this slot directly to tell the two
+// kinds apart (e.g. USDC is a legacy zos proxy, not EIP-1967).
+const EIP1967_IMPLEMENTATION_SLOT =
+  "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
 const RPC_TIMEOUT_MS = 4_000;
 // Detection makes up to three RPC calls (implementation, beacon, admin) and
 // each call retries every candidate URL, so keep the list short enough that a
@@ -53,17 +60,39 @@ export async function getEip1967ProxyInfo(chainId, address) {
     return { isProxy: false };
   }
 
+  let kind = beaconAddress ? "beacon" : "eip1967";
+  if (
+    directImplementationAddress &&
+    !(await isEip1967ImplementationSlotSet(provider, address))
+  ) {
+    kind = "legacy";
+  }
+
   const adminAddress = await getOptionalAdminAddress(provider, address);
   return {
     isProxy: true,
     proxyInfo: {
-      kind: beaconAddress ? "beacon" : "eip1967",
+      kind,
       proxyAddress: address,
       implementationAddress,
       ...(adminAddress ? { adminAddress } : {}),
       ...(beaconAddress ? { beaconAddress } : {}),
     },
   };
+}
+
+async function isEip1967ImplementationSlotSet(provider, address) {
+  try {
+    const rawSlot = await provider.send("eth_getStorageAt", [
+      address,
+      EIP1967_IMPLEMENTATION_SLOT,
+      "latest",
+    ]);
+    return Boolean(rawSlot) && BigInt(rawSlot) !== 0n;
+  } catch {
+    // Can't tell the kinds apart - keep the default EIP-1967 label.
+    return true;
+  }
 }
 
 export function isAddress(value) {
