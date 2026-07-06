@@ -1,4 +1,4 @@
-import { useContext, useMemo, useState } from "react";
+import { Fragment, useContext, useMemo, useState } from "react";
 import { Code2, Code, Share, X, Cross, TriangleAlert, Braces } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,9 +42,13 @@ import type {
   TypeItemMembers,
   StructMember,
 } from "@openzeppelin/upgrades-core";
+import type { Eip1967ProxyInfo } from "@/lib/eip1967";
 
 const SLOT_ZERO =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
+
+const truncateAddress = (value: string) =>
+  `${value.slice(0, 10)}...${value.slice(-8)}`;
 
 // A type's `members` is either struct fields or enum value names (plain
 // strings) - only the former has its own slot/offset layout to unwrap.
@@ -263,6 +267,8 @@ export interface StorageVisualizerProps {
   storageLayout: StorageLayout;
   chainId: number | undefined;
   address: string | undefined;
+  sourceAddress?: string;
+  proxyInfo?: Eip1967ProxyInfo;
 }
 
 export default function StorageVisualizer({
@@ -271,6 +277,8 @@ export default function StorageVisualizer({
   storageLayout,
   chainId,
   address,
+  sourceAddress,
+  proxyInfo,
 }: StorageVisualizerProps) {
   // Global context
   const storageLayoutsContext = useContext(StorageLayoutsContext);
@@ -311,6 +319,8 @@ export default function StorageVisualizer({
               contractName,
               chainId,
               address,
+              sourceAddress,
+              proxyInfo,
               storageLayout,
               namespace:
                 activeTab === ROOT_LAYOUT_TAB ? undefined : activeTab,
@@ -396,6 +406,8 @@ export default function StorageVisualizer({
     return wrappers;
   }, [storageLayout]);
 
+  const sourcifyAddress = sourceAddress ?? address;
+
   return (
     <Card className="bg-black border-green-500 md:mb-4 overflow-hidden relative py-0 gap-0 h-full w-full transition-all duration-500 ease-in-out">
       {/* Upper Bar */}
@@ -404,10 +416,11 @@ export default function StorageVisualizer({
           <Code2 className="text-green-500 h-4 w-4" />
           <span className="text-green-500 text-sm font-bold">
             {chainId !== undefined && address !== undefined
-              ? `${contractName} (Addr: ${address.slice(
-                  0,
-                  10
-                )}...${address.slice(-8)} | Chain Id: ${chainId})`
+              ? `${contractName} (${
+                  proxyInfo
+                    ? `Proxy: ${truncateAddress(address)} | Impl: ${truncateAddress(proxyInfo.implementationAddress)}`
+                    : `Addr: ${truncateAddress(address)}`
+                } | Chain Id: ${chainId})`
               : contractName}
           </span>
         </div>
@@ -421,7 +434,7 @@ export default function StorageVisualizer({
                     size="icon"
                     onClick={() =>
                       window.open(
-                        `https://repo.sourcify.dev/${chainId.toString()}/${address}`,
+                        `https://repo.sourcify.dev/${chainId.toString()}/${sourcifyAddress}`,
                         "_blank"
                       )
                     }
@@ -431,7 +444,9 @@ export default function StorageVisualizer({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent className="bg-black border-green-500 border text-green-500 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
-                  View code on Sourcify.eth
+                  {proxyInfo
+                    ? "View implementation code on Sourcify.eth"
+                    : "View code on Sourcify.eth"}
                 </TooltipContent>
               </Tooltip>
 
@@ -575,6 +590,30 @@ export default function StorageVisualizer({
         </div>
       </div>
 
+      {proxyInfo && (
+        <div className="border-b border-green-500/30 bg-green-900/10 px-4 py-2 text-[11px] text-green-500">
+          <span className="font-bold">EIP-1967 proxy detected.</span>{" "}
+          <span>Proxy storage: {truncateAddress(proxyInfo.proxyAddress)}</span>
+          <span className="mx-2">|</span>
+          <span>
+            Implementation layout:{" "}
+            {truncateAddress(proxyInfo.implementationAddress)}
+          </span>
+          {proxyInfo.beaconAddress && (
+            <>
+              <span className="mx-2">|</span>
+              <span>Beacon: {truncateAddress(proxyInfo.beaconAddress)}</span>
+            </>
+          )}
+          {proxyInfo.adminAddress && (
+            <>
+              <span className="mx-2">|</span>
+              <span>Admin: {truncateAddress(proxyInfo.adminAddress)}</span>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Tabs*/}
       <Tabs value={activeTab} onValueChange={setSelectedTab} className="w-full">
         <div
@@ -589,7 +628,7 @@ export default function StorageVisualizer({
         >
           <TabsList className="bg-transparent h-9 flex items-center whitespace-nowrap">
             {storageLayouts.map((layout) => (
-              <>
+              <Fragment key={layout.name}>
                 <TabsTrigger
                   value={layout.name}
                   className="text-green-500 data-[state=active]:bg-green-900/30 data-[state=active]:text-green-500 data-[state=active]:shadow-none rounded-none border-r"
@@ -597,24 +636,31 @@ export default function StorageVisualizer({
                   {layout.name}
                 </TabsTrigger>
                 <div className="w-px h-6 bg-green-500 mx-2 self-center" />
-              </>
+              </Fragment>
             ))}
           </TabsList>
         </div>
 
         {/*Content */}
         {storageLayouts.map((layout, index) => (
-          <TabsContent value={layout.name} className="mt-0">
+          <TabsContent key={layout.name} value={layout.name} className="mt-0">
             {layout.baseSlot !== undefined && (
               <div className="px-4 pb-2 text-green-500 text-[8px] md:text-[11px]">
                 base slot: {layout.baseSlot}
               </div>
             )}
             {layout.slots.length === 0 && (
-              <div className="flex items-center justify-center gap-2 px-4 pb-2 my-5 text-green-500">
-                <TriangleAlert className="h-4 w-4" />
-                <span className="text-center">
-                  {layout.name} has no storage items defined.
+              <div className="flex flex-col items-center gap-1 px-4 pb-2 my-5 text-green-500">
+                <div className="flex items-center justify-center gap-2">
+                  <TriangleAlert className="h-4 w-4" />
+                  <span className="text-center">
+                    {layout.name} has no storage items defined.
+                  </span>
+                </div>
+                <span className="text-center text-green-500/60 text-xs">
+                  The contract may only use constants/immutables, or keep its
+                  state in unstructured storage (manually computed slots),
+                  which the compiler's storage layout cannot describe.
                 </span>
               </div>
             )}

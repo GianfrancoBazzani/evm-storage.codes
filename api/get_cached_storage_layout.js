@@ -35,6 +35,8 @@ export async function POST(request) {
       JSON.stringify({
         storageLayout: entry.storageLayout,
         contractName: entry.contractName,
+        sourceAddress: entry.sourceAddress,
+        proxyInfo: entry.proxyInfo,
       }),
       {
         status: 200,
