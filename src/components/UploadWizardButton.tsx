@@ -71,10 +71,12 @@ export default function UploadWizardButton({
     WizardStep.SELECT_COMPILER
   );
 
-  // Files management - allow multiple files
+  // Files management - allow multiple files, or a whole directory
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [noSolidityFilesFound, setNoSolidityFilesFound] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dirInputRef = useRef<HTMLInputElement>(null);
 
   // Compiler management
   const [compilerVersions, setCompilerVersions] = useState<
@@ -118,6 +120,7 @@ export default function UploadWizardButton({
     setWizardStep(WizardStep.SELECT_COMPILER);
     setIsDragging(false);
     setSelectedFiles([]);
+    setNoSolidityFilesFound(false);
     setCompilerVersion("");
     setAdvancedOptionsEnabled(false);
     setEvmVersion(undefined);
@@ -132,6 +135,9 @@ export default function UploadWizardButton({
     setStorageLayoutLoadingError("");
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
+    }
+    if (dirInputRef.current) {
+      dirInputRef.current.value = "";
     }
   }
 
@@ -179,19 +185,31 @@ export default function UploadWizardButton({
     setIsDragging(false);
   }
 
+  // The single/multi-file input already limits picking to .sol via `accept`,
+  // but that attribute has no effect on a webkitdirectory folder pick (nor on
+  // drag-and-drop) - filter here so a whole-project folder doesn't also pull
+  // in configs, artifacts, or other unrelated files it contains.
+  function isSolidityFile(file: File): boolean {
+    return file.name.toLowerCase().endsWith(".sol");
+  }
+
   function handleDrop(e: DragEvent<HTMLDivElement>) {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      setSelectedFiles(Array.from(e.dataTransfer.files));
+      const solFiles = Array.from(e.dataTransfer.files).filter(isSolidityFile);
+      setNoSolidityFilesFound(solFiles.length === 0);
+      setSelectedFiles(solFiles);
     }
   }
 
   function handleFileInputChange(e: ChangeEvent<HTMLInputElement>) {
     if (e.target.files && e.target.files.length > 0) {
-      setSelectedFiles(Array.from(e.target.files));
+      const solFiles = Array.from(e.target.files).filter(isSolidityFile);
+      setNoSolidityFilesFound(solFiles.length === 0);
+      setSelectedFiles(solFiles);
     }
   }
 
@@ -201,10 +219,24 @@ export default function UploadWizardButton({
     }
   }
 
+  function triggerDirInput() {
+    if (dirInputRef.current) {
+      dirInputRef.current.click();
+    }
+  }
+
   function removeFile(fileToRemove: File) {
     setSelectedFiles((prevFiles) =>
       prevFiles.filter((file) => file !== fileToRemove)
     );
+  }
+
+  // Files picked via the webkitdirectory input carry their path (relative to
+  // the selected folder) in webkitRelativePath, needed so cross-file Solidity
+  // imports (e.g. "../lib/Foo.sol") resolve against the right source keys
+  // instead of colliding on bare filenames.
+  function filePathOf(file: File): string {
+    return file.webkitRelativePath || file.name;
   }
 
   // Compile function
@@ -215,7 +247,7 @@ export default function UploadWizardButton({
     const sources: Record<string, { content: string }> = {};
     for (const file of selectedFiles) {
       const fileContent = await file.text();
-      sources[file.name] = { content: fileContent };
+      sources[filePathOf(file)] = { content: fileContent };
     }
 
     // Create solcInput object
@@ -530,8 +562,8 @@ export default function UploadWizardButton({
               id="upload-dialog-description"
               className=" text-green-800"
             >
-              Upload one or more Solidity source files. They will be compiled
-              together.
+              Upload one or more Solidity source files, or a whole folder.
+              They will be compiled together.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-4">
@@ -555,6 +587,18 @@ export default function UploadWizardButton({
                 onChange={handleFileInputChange}
                 accept=".sol"
               />
+              <input
+                type="file"
+                multiple
+                ref={(el) => {
+                  dirInputRef.current = el;
+                  // webkitdirectory isn't part of React's typed input
+                  // attributes, so it has to be set imperatively.
+                  el?.setAttribute("webkitdirectory", "");
+                }}
+                className="hidden"
+                onChange={handleFileInputChange}
+              />
 
               {selectedFiles.length > 0 ? (
                 <div className="space-y-2">
@@ -566,7 +610,7 @@ export default function UploadWizardButton({
                       <div className="flex items-center">
                         <FileIcon className="h-6 w-6 mr-2 text-green-500" />
                         <span className="text-green-500 truncate max-w-[250px]">
-                          {file.name}
+                          {filePathOf(file)}
                         </span>
                       </div>
                       <button
@@ -580,17 +624,40 @@ export default function UploadWizardButton({
                       </button>
                     </div>
                   ))}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      triggerDirInput();
+                    }}
+                    className="text-green-500/70 text-xs underline hover:text-green-400"
+                  >
+                    or select a folder
+                  </button>
                 </div>
               ) : (
                 <div className="flex flex-col items-center">
                   <Upload className="h-10 w-10 mb-2 text-green-500" />
                   <p className="text-green-500 mb-1">UPLOAD CONTRACT FILES</p>
                   <p className="text-green-500/70 text-sm">
-                    Drag and drop or click to browse
+                    Drag and drop or click to browse, or{" "}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        triggerDirInput();
+                      }}
+                      className="underline hover:text-green-400"
+                    >
+                      select a folder
+                    </button>
                   </p>
                   <p className="text-green-500/50 text-xs mt-2">
                     .sol files supported
                   </p>
+                  {noSolidityFilesFound && (
+                    <p className="text-red-500 text-xs mt-2">
+                      No .sol files found in that selection.
+                    </p>
+                  )}
                 </div>
               )}
             </div>
