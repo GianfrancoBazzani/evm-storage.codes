@@ -44,6 +44,9 @@ import type {
 } from "@openzeppelin/upgrades-core";
 import { proxyKindLabel } from "@/lib/eip1967";
 import type { Eip1967ProxyInfo } from "@/lib/eip1967";
+import { fetchStorageValues } from "@/lib/storage-values";
+import { resolveStorageValue } from "@/lib/decode-storage-value";
+import type { DecodedValue, RawTypes } from "@/lib/decode-storage-value";
 
 const SLOT_ZERO =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
@@ -93,6 +96,14 @@ interface ItemWrapper {
   color: string;
   width: number;
   offset: number;
+  // Byte-precision counterparts of width/offset (which are percentages, for
+  // CSS) - needed to fetch and decode this segment's on-chain value.
+  widthBytes: number;
+  offsetBytes: number;
+  // How many bytes of the item's *own* value were already shown by earlier
+  // rows (0 unless this is a continuation row of a multi-slot item). Lets a
+  // fixed-array row figure out which element indices its bytes cover.
+  byteRangeStart: number;
 }
 
 // A single displayed row. Usually one row is one slot (label is that slot
@@ -102,6 +113,11 @@ interface ItemWrapper {
 interface SlotRow {
   items: ItemWrapper[];
   label: string;
+  // Relative starting slot this row represents, and how many slots it spans
+  // (>1 only for a collapsed row) - used to compute the absolute on-chain
+  // slot to read when a segment is clicked.
+  slotIndex: number;
+  slotSpan: number;
 }
 
 interface StorageLayoutWrapper {
@@ -175,6 +191,11 @@ function getStorageLayoutWrapper(
       }
     }
 
+    // Tracks, per item, how many bytes of its own value have already been
+    // shown by earlier rows - lets a fixed-array row figure out which
+    // element indices its own bytes cover. Reset per wrapper build.
+    const consumedBytes = new WeakMap<StorageItem, number>();
+
     let overflowBytes = 0;
     for (let i = 0; i <= maxSlot; i++) {
       // copy: the overflow handling below unshifts into this array
@@ -200,9 +221,14 @@ function getStorageLayoutWrapper(
                 color: idToColor[`${item.contract}:${item.label}`],
                 width: 100,
                 offset: 0,
+                widthBytes: Math.min(itemNumberOfBytes, 32),
+                offsetBytes: 0,
+                byteRangeStart: 0,
               },
             ],
             label: `${i}–${endSlot}`,
+            slotIndex: i,
+            slotSpan: itemSlotSpan,
           });
           i = endSlot;
           continue;
@@ -235,11 +261,17 @@ function getStorageLayoutWrapper(
             if (width > 32) {
               width = 32;
             }
+            const offsetBytes = Number(item.offset);
+            const byteRangeStart = consumedBytes.get(item) ?? 0;
+            consumedBytes.set(item, byteRangeStart + width);
             const wrappedItem: ItemWrapper = {
               item: item,
               color: idToColor[`${item.contract}:${item.label}`],
               width: Number(width) * 3.125, // 100%/32Bytes = 3.125
-              offset: Number(item.offset) * 3.125, // 100%/32Bytes = 3.125
+              offset: offsetBytes * 3.125, // 100%/32Bytes = 3.125
+              widthBytes: width,
+              offsetBytes,
+              byteRangeStart,
             };
             return wrappedItem;
           })
@@ -252,7 +284,7 @@ function getStorageLayoutWrapper(
       } else {
         overflowBytes = 0;
       }
-      slots.push({ items: slotItemsWrapped, label: String(i) });
+      slots.push({ items: slotItemsWrapped, label: String(i), slotIndex: i, slotSpan: 1 });
     }
   }
   return {
@@ -342,33 +374,142 @@ export default function StorageVisualizer({
     });
   }
 
-  // Helpers to manage pinnable tooltips, each tooltip stare is tracked in a key-value object where the key is LayoutName|TypeLabel|ItemLabel
-  const [pinnedTooltips, setPinnedTooltips] = useState<Record<string, boolean>>(
-    {}
-  );
-  const [visibleTooltips, setVisibleTooltips] = useState<
-    Record<string, boolean>
-  >({});
+  // Clicking a slot segment expands an inline block showing its on-chain
+  // value (fetched on demand, only for the clicked slot). Hovering still
+  // shows the plain type|label tooltip, unaffected by any of this - each
+  // item's key is LayoutName|TypeLabel|ItemLabel|RowIndex|ItemIndex.
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  type ValueFetchState =
+    | { status: "loading" }
+    | { status: "error"; message: string }
+    | { status: "unavailable"; message: string }
+    | { status: "loaded"; rawSlotHex: string; decoded: DecodedValue | DecodedValue[] };
+  const [valueState, setValueState] = useState<Record<string, ValueFetchState>>({});
 
-  function handlePinTooltip(key: string) {
-    const willBePinned = !pinnedTooltips[key];
-    setPinnedTooltips((prev) => ({
-      ...prev,
-      [key]: willBePinned,
-    }));
-    if (willBePinned) {
-      setVisibleTooltips((prev) => ({
-        ...prev,
-        [key]: true,
-      }));
-    }
+  function itemKeyFor(
+    layoutName: string,
+    item: ItemWrapper,
+    rowIndex: number,
+    itemIndex: number
+  ) {
+    return `${layoutName}|${storageLayout.types[item.item.type].label}|${item.item.label}|${rowIndex}|${itemIndex}`;
   }
 
-  function handleOpenTooltip(key: string, openFromInteraction: boolean) {
-    setVisibleTooltips((prevVisible) => ({
-      ...prevVisible,
-      [key]: openFromInteraction,
-    }));
+  function handleToggleExpand(
+    itemKey: string,
+    row: SlotRow,
+    item: ItemWrapper,
+    layout: StorageLayoutWrapper
+  ) {
+    const wasExpanded = expandedItems.has(itemKey);
+    setExpandedItems((prev) => {
+      const next = new Set(prev);
+      if (wasExpanded) {
+        next.delete(itemKey);
+      } else {
+        next.add(itemKey);
+      }
+      return next;
+    });
+    if (wasExpanded || valueState[itemKey]) return;
+
+    if (chainId === undefined || address === undefined) {
+      setValueState((prev) => ({
+        ...prev,
+        [itemKey]: {
+          status: "unavailable",
+          message: "No on-chain address associated with this layout.",
+        },
+      }));
+      return;
+    }
+    if (row.slotSpan > 1) {
+      setValueState((prev) => ({
+        ...prev,
+        [itemKey]: {
+          status: "unavailable",
+          message: "Collapsed multi-slot range — values are not resolved.",
+        },
+      }));
+      return;
+    }
+
+    setValueState((prev) => ({ ...prev, [itemKey]: { status: "loading" } }));
+    void (async () => {
+      try {
+        const baseSlot = layout.baseSlot ? BigInt(layout.baseSlot) : 0n;
+        const absoluteSlot = baseSlot + BigInt(row.slotIndex);
+        const slotKey = absoluteSlot.toString();
+        const values = await fetchStorageValues(chainId, address, [slotKey]);
+        const rawSlotHex = values[slotKey];
+        if (rawSlotHex === undefined) {
+          throw new Error("No value returned for this slot.");
+        }
+        const types = storageLayout.types as unknown as RawTypes;
+        const type = types[item.item.type];
+        const decoded = await resolveStorageValue(
+          type,
+          types,
+          item.offsetBytes,
+          item.widthBytes,
+          item.byteRangeStart,
+          absoluteSlot,
+          rawSlotHex,
+          (slots) => fetchStorageValues(chainId, address, slots)
+        );
+        setValueState((prev) => ({
+          ...prev,
+          [itemKey]: { status: "loaded", rawSlotHex, decoded },
+        }));
+      } catch (error) {
+        setValueState((prev) => ({
+          ...prev,
+          [itemKey]: {
+            status: "error",
+            message: error instanceof Error ? error.message : "Failed to fetch value.",
+          },
+        }));
+      }
+    })();
+  }
+
+  function renderValueBlock(state: ValueFetchState | undefined) {
+    if (!state) return null;
+    if (state.status === "loading") {
+      return <span className="text-green-500/70 italic">Fetching…</span>;
+    }
+    if (state.status === "error") {
+      return <span className="text-red-400">Error: {state.message}</span>;
+    }
+    if (state.status === "unavailable") {
+      return <span className="text-green-500/50 italic">{state.message}</span>;
+    }
+    const decoded = state.decoded;
+    return (
+      <div className="flex flex-col gap-0.5">
+        <div className="font-mono break-all text-green-500/80">
+          hex: {state.rawSlotHex}
+        </div>
+        {Array.isArray(decoded) ? (
+          decoded.map((element) => (
+            <div key={element.index}>
+              <span className="text-green-500/70">[{element.index}]</span>{" "}
+              <span className="font-mono">{element.display}</span>
+              {element.note && (
+                <span className="text-green-500/50 italic ml-1">{element.note}</span>
+              )}
+            </div>
+          ))
+        ) : (
+          <div>
+            <span className="font-mono">{decoded.display}</span>
+            {decoded.note && (
+              <span className="text-green-500/50 italic ml-1">{decoded.note}</span>
+            )}
+          </div>
+        )}
+      </div>
+    );
   }
 
   // Build the per-tab wrapper array once per layout: controlled Tabs and
@@ -671,62 +812,80 @@ export default function StorageVisualizer({
               key={index}
               className=" px-4 pb-4 overflow-x-auto text-green-500 text-sm leading-relaxed"
             >
-              {layout.slots.map((row, rowIndex) => (
-                <div key={rowIndex} className=" flex flex-row my-0.5 ">
-                  <div className="min-w-5 shrink-0 pr-1 text-[11px]">
-                    {row.label}
-                  </div>
-                  <div className=" h-[1.2rem] w-full relative ">
-                    {row.items.map((item, itemIndex) => {
-                      // Include the row/segment position in the key: an
-                      // item spanning multiple slots (e.g. uint256[80])
-                      // repeats the same label/type on every row it
-                      // occupies, so without this each segment would share
-                      // one tooltip state and all open together on hover.
-                      const tooltipKey = `${layout.name}|${
-                        storageLayout?.types[item.item.type].label
-                      }|${item.item.label}|${rowIndex}|${itemIndex}`;
-                      return (
-                        <div key={itemIndex} className=" flex flex-col">
-                          <Tooltip
-                            open={Boolean(
-                              visibleTooltips[tooltipKey] ||
-                                pinnedTooltips[tooltipKey]
-                            )}
-                            onOpenChange={(isOpen) =>
-                              handleOpenTooltip(tooltipKey, isOpen)
-                            }
-                          >
-                            <TooltipTrigger
-                              asChild
-                              onClick={() => {
-                                handlePinTooltip(tooltipKey);
-                              }}
+              {layout.slots.map((row, rowIndex) => {
+                const expandedInRow = row.items
+                  .map((item, itemIndex) => ({ item, itemIndex }))
+                  .filter(({ item, itemIndex }) =>
+                    expandedItems.has(itemKeyFor(layout.name, item, rowIndex, itemIndex))
+                  );
+                return (
+                  <div key={rowIndex} className="flex flex-col my-0.5">
+                    <div className="flex flex-row">
+                      <div className="min-w-5 shrink-0 pr-1 text-[11px]">
+                        {row.label}
+                      </div>
+                      <div className=" h-[1.2rem] w-full relative ">
+                        {row.items.map((item, itemIndex) => {
+                          // Include the row/segment position in the key: an
+                          // item spanning multiple slots (e.g. uint256[80])
+                          // repeats the same label/type on every row it
+                          // occupies, so without this each segment would
+                          // share one state and all expand together.
+                          const itemKey = itemKeyFor(layout.name, item, rowIndex, itemIndex);
+                          return (
+                            <div key={itemIndex} className=" flex flex-col">
+                              <Tooltip>
+                                <TooltipTrigger
+                                  asChild
+                                  onClick={() =>
+                                    handleToggleExpand(itemKey, row, item, layout)
+                                  }
+                                >
+                                  <div
+                                    style={{
+                                      width: `${item.width}%`,
+                                      left: `${item.offset}%`,
+                                      backgroundColor: item.color,
+                                    }}
+                                    className="h-full absolute border border-green-500 cursor-pointer"
+                                  />
+                                </TooltipTrigger>
+                                <TooltipContent className="bg-black border-green-500 border text-green-500 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
+                                  <span>
+                                    {`${
+                                      storageLayout?.types[item.item.type].label
+                                    } | ${item.item.label}`}
+                                  </span>
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="h-[2px]" />
+                    </div>
+                    {expandedInRow.length > 0 && (
+                      <div className="ml-5 flex flex-col gap-1 pb-1 text-[10px] md:text-[11px]">
+                        {expandedInRow.map(({ item, itemIndex }) => {
+                          const itemKey = itemKeyFor(layout.name, item, rowIndex, itemIndex);
+                          return (
+                            <div
+                              key={itemIndex}
+                              className="border border-green-500/30 rounded bg-green-950/20 px-2 py-1"
                             >
-                              <div
-                                style={{
-                                  width: `${item.width}%`,
-                                  left: `${item.offset}%`,
-                                  backgroundColor: item.color,
-                                }}
-                                className="h-full absolute border border-green-500"
-                              />
-                            </TooltipTrigger>
-                            <TooltipContent className="bg-black border-green-500 border text-green-500 px-3 py-1 rounded-md shadow-md text-xs transition-colors duration-200">
-                              <span>
-                                {`${
-                                  storageLayout?.types[item.item.type].label
-                                } | ${item.item.label}`}
-                              </span>
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
-                      );
-                    })}
+                              <div className="text-green-500/70">
+                                {storageLayout.types[item.item.type].label} ·{" "}
+                                {item.item.label}
+                              </div>
+                              {renderValueBlock(valueState[itemKey])}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                  <div className="h-[2px]" />
-                </div>
-              ))}
+                );
+              })}
             </div>
           </TabsContent>
         ))}

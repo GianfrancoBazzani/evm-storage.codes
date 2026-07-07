@@ -47,12 +47,32 @@ export async function POST(request) {
     const deref = astDereferencer(solcOutput);
 
     // Extract the storage layout
+    const rawStorageLayout =
+      solcOutput.contracts[sourceName][contractDef.name].storageLayout;
+    const namespacedContext = getNamespacedCompilationContext(
+      sourceName,
+      contractDef,
+      namespacedOutput
+    );
     const storageLayout = extractStorageLayout(
       contractDef,
       decodeSrc,
       deref,
-      solcOutput.contracts[sourceName][contractDef.name].storageLayout,
-      getNamespacedCompilationContext(sourceName, contractDef, namespacedOutput)
+      rawStorageLayout,
+      namespacedContext
+    );
+
+    // upgrades-core's extractStorageLayout only keeps label/members/
+    // numberOfBytes on each type entry - it deliberately drops solc's
+    // `encoding`/`base`/`key`/`value` fields, which it doesn't need for its
+    // own purposes but which the frontend needs to decode on-chain values
+    // (encoding distinguishes a plain scalar from a mapping/array/dynamic
+    // bytes, and base/key/value point at the relevant sub-type). Merge them
+    // back in from the raw solc output(s) we already have on hand.
+    enrichTypesWithSolcFields(
+      storageLayout,
+      rawStorageLayout,
+      namespacedContext?.storageLayout
     );
 
     // Cache the storage layout in the database if it is not already cached.
@@ -143,6 +163,21 @@ export async function POST(request) {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
+  }
+}
+
+function enrichTypesWithSolcFields(layout, ...rawLayouts) {
+  const rawTypes = Object.assign(
+    {},
+    ...rawLayouts.filter(Boolean).map((rawLayout) => rawLayout.types ?? {})
+  );
+  for (const [id, type] of Object.entries(layout.types)) {
+    const raw = rawTypes[id];
+    if (!raw) continue;
+    if (raw.encoding !== undefined) type.encoding = raw.encoding;
+    if (raw.base !== undefined) type.base = raw.base;
+    if (raw.key !== undefined) type.key = raw.key;
+    if (raw.value !== undefined) type.value = raw.value;
   }
 }
 
