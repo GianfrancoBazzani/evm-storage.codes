@@ -1,4 +1,4 @@
-import { Fragment, useContext, useMemo, useState } from "react";
+import { Fragment, useContext, useEffect, useMemo, useState } from "react";
 import { Code2, Code, Share, X, Cross, TriangleAlert, Braces } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,6 +53,19 @@ const SLOT_ZERO =
 
 const truncateAddress = (value: string) =>
   `${value.slice(0, 10)}...${value.slice(-8)}`;
+
+const storageLayoutScopeIds = new WeakMap<StorageLayout, number>();
+let nextStorageLayoutScopeId = 0;
+
+function getStorageLayoutScopeId(storageLayout: StorageLayout) {
+  let id = storageLayoutScopeIds.get(storageLayout);
+  if (id === undefined) {
+    id = nextStorageLayoutScopeId;
+    nextStorageLayoutScopeId += 1;
+    storageLayoutScopeIds.set(storageLayout, id);
+  }
+  return id;
+}
 
 // A type's `members` is either struct fields or enum value names (plain
 // strings) - only the former has its own slot/offset layout to unwrap.
@@ -338,6 +351,9 @@ export default function StorageVisualizer({
     selectedTab === ROOT_LAYOUT_TAB || storageLayout.namespaces?.[selectedTab]
       ? selectedTab
       : ROOT_LAYOUT_TAB;
+  const valueScopeKey = `${getStorageLayoutScopeId(storageLayout)}|${
+    chainId ?? "local"
+  }|${address ?? ""}`;
 
   function handleCopyJson(mode: "full" | "tab" | "all") {
     // Optimistic feedback: the tooltip must already read "Copied!" when the
@@ -386,13 +402,18 @@ export default function StorageVisualizer({
     | { status: "loaded"; rawSlotHex: string; decoded: DecodedValue | DecodedValue[] };
   const [valueState, setValueState] = useState<Record<string, ValueFetchState>>({});
 
+  useEffect(() => {
+    setExpandedItems(new Set());
+    setValueState({});
+  }, [valueScopeKey]);
+
   function itemKeyFor(
     layoutName: string,
     item: ItemWrapper,
     rowIndex: number,
     itemIndex: number
   ) {
-    return `${layoutName}|${storageLayout.types[item.item.type].label}|${item.item.label}|${rowIndex}|${itemIndex}`;
+    return `${valueScopeKey}|${layoutName}|${storageLayout.types[item.item.type].label}|${item.item.label}|${rowIndex}|${itemIndex}`;
   }
 
   function handleToggleExpand(

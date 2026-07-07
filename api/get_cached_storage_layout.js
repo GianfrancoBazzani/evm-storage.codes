@@ -4,6 +4,7 @@ import {
   isAddress,
   sameAddress,
 } from "./_lib/eip1967.js";
+import { VALUE_METADATA_VERSION } from "./_lib/value-metadata-version.js";
 
 export async function POST(request) {
   try {
@@ -23,6 +24,16 @@ export async function POST(request) {
 
     if (!entry?.storageLayout) {
       return cacheMissResponse();
+    }
+    // Entries cached before on-chain value decoding existed (or by an older
+    // version of it) won't have the types[].encoding/base/key/value fields
+    // that decoding needs - treat a version mismatch as a cache miss so the
+    // wizard regenerates and re-caches in the current shape, rather than
+    // silently degrading every row to "unsupported" forever.
+    if (entry.valueMetadataVersion !== VALUE_METADATA_VERSION) {
+      return cacheMissResponse(
+        "Cached storage layout predates on-chain value decoding support."
+      );
     }
 
     // Proxies can be upgraded after their layout was cached, which would

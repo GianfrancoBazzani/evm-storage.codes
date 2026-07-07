@@ -6,6 +6,7 @@ import { brotliDecompressSync } from "zlib";
 import { findAll, astDereferencer, isNodeType } from "solidity-ast/utils.js";
 import { Redis } from "@upstash/redis";
 import { getEip1967ProxyInfo, sameAddress } from "./_lib/eip1967.js";
+import { VALUE_METADATA_VERSION } from "./_lib/value-metadata-version.js";
 
 export async function POST(request) {
   try {
@@ -142,6 +143,11 @@ export async function POST(request) {
               ? sourceAddress
               : undefined,
           proxyInfo: cacheProxyInfo,
+          // Bump this if the shape of data value-decoding relies on
+          // (currently: types[].encoding/base/key/value) changes again -
+          // get_cached_storage_layout.js treats a mismatch as a cache miss
+          // so old entries get regenerated instead of silently degrading.
+          valueMetadataVersion: VALUE_METADATA_VERSION,
         });
         //await redis.set(cacheKey, storageLayout, {
         //  nx: true, // only store if not already exists
