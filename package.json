@@ -23,7 +23,7 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@tailwindcss/vite": "^4.3.0",
     "@upstash/redis": "^1.38.0",
-    "@vercel/analytics": "^1.6.1",
+    "@vercel/analytics": "^2.0.1",
     "brotli-wasm": "^3.0.1",
     "buffer": "^6.0.3",
     "class-variance-authority": "^0.7.1",
