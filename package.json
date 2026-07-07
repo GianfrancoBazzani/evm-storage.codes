@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@fontsource-variable/pixelify-sans": "^5.2.7",
-    "@openzeppelin/upgrades-core": "^1.44.2",
+    "@openzeppelin/upgrades-core": "^1.46.0",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-popover": "^1.1.15",
     "@radix-ui/react-select": "^2.2.6",

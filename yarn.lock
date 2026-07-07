@@ -2125,9 +2125,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@openzeppelin/upgrades-core@npm:^1.44.2":
-  version: 1.44.2
-  resolution: "@openzeppelin/upgrades-core@npm:1.44.2"
+"@openzeppelin/upgrades-core@npm:^1.46.0":
+  version: 1.46.0
+  resolution: "@openzeppelin/upgrades-core@npm:1.46.0"
   dependencies:
     "@nomicfoundation/slang": "npm:^0.18.3"
     bignumber.js: "npm:^9.1.2"
@@ -2136,13 +2136,13 @@ __metadata:
     compare-versions: "npm:^6.0.0"
     debug: "npm:^4.1.1"
     ethereumjs-util: "npm:^7.0.3"
-    minimatch: "npm:^9.0.5"
+    minimatch: "npm:^10.2.5"
     minimist: "npm:^1.2.7"
     proper-lockfile: "npm:^4.1.1"
     solidity-ast: "npm:^0.4.60"
   bin:
     openzeppelin-upgrades-core: dist/cli/cli.js
-  checksum: 6e4fe9d3209b656dfa2fba32fa8b9bd3c0feafc2c902d81a6c8d57e4358ddf954ea326c6df017c0365fb0c8118a03942409cde2fd60b4509b2a9f8e007fbdfab
+  checksum: 11b938ef442cecb8441a8022f67b5fb3e87e84f521b8d33d2b1f94ef954382f8538e59afa58e23cd5ec29f39446ea67f428d30416b8a03671dc509aff87167e4
   languageName: node
   linkType: hard
 
@@ -4807,6 +4807,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"balanced-match@npm:^4.0.2":
+  version: 4.0.4
+  resolution: "balanced-match@npm:4.0.4"
+  checksum: 07e86102a3eb2ee2a6a1a89164f29d0dbaebd28f2ca3f5ca786f36b8b23d9e417eb3be45a4acf754f837be5ac0a2317de90d3fcb7f4f4dc95720a1f36b26a17b
+  languageName: node
+  linkType: hard
+
 "bare-events@npm:^2.7.0":
   version: 2.8.2
   resolution: "bare-events@npm:2.8.2"
@@ -4904,6 +4911,15 @@ __metadata:
   dependencies:
     balanced-match: "npm:^1.0.0"
   checksum: 6d117a4c793488af86b83172deb6af143e94c17bc53b0b3cec259733923b4ca84679d506ac261f4ba3c7ed37c46018e2ff442f9ce453af8643ecd64f4a54e6cf
+  languageName: node
+  linkType: hard
+
+"brace-expansion@npm:^5.0.5":
+  version: 5.0.7
+  resolution: "brace-expansion@npm:5.0.7"
+  dependencies:
+    balanced-match: "npm:^4.0.2"
+  checksum: 4769109c3c082de178e449a371bcad50d51ab468f644bce2dd9188efe0cf0a080ed102105d7fc8577382cedc45bad7e6443a91bf3d8102264ee8cf927dbaf205
   languageName: node
   linkType: hard
 
@@ -6656,7 +6672,7 @@ __metadata:
     "@babel/preset-env": "npm:^7.28.5"
     "@eslint/js": "npm:^9.39.1"
     "@fontsource-variable/pixelify-sans": "npm:^5.2.7"
-    "@openzeppelin/upgrades-core": "npm:^1.44.2"
+    "@openzeppelin/upgrades-core": "npm:^1.46.0"
     "@radix-ui/react-dialog": "npm:^1.1.15"
     "@radix-ui/react-popover": "npm:^1.1.15"
     "@radix-ui/react-select": "npm:^2.2.6"
@@ -8108,6 +8124,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"minimatch@npm:^10.2.5":
+  version: 10.2.5
+  resolution: "minimatch@npm:10.2.5"
+  dependencies:
+    brace-expansion: "npm:^5.0.5"
+  checksum: 6bb058bd6324104b9ec2f763476a35386d05079c1f5fe4fbf1f324a25237cd4534d6813ecd71f48208f4e635c1221899bef94c3c89f7df55698fe373aaae20fd
+  languageName: node
+  linkType: hard
+
 "minimatch@npm:^3.0.4, minimatch@npm:^3.1.1, minimatch@npm:^3.1.2":
   version: 3.1.2
   resolution: "minimatch@npm:3.1.2"
@@ -8117,7 +8142,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"minimatch@npm:^9.0.4, minimatch@npm:^9.0.5":
+"minimatch@npm:^9.0.4":
   version: 9.0.5
   resolution: "minimatch@npm:9.0.5"
   dependencies:
