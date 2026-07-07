@@ -65,7 +65,7 @@ export async function resolveStorageValue(
       return {
         kind: "unsupported",
         display: "—",
-        note: "Mapping — pick a key to resolve a value.",
+        note: "Mapping — a value can't be read without a key, which isn't supported here.",
       };
     case "dynamic_array": {
       const length = hexToBigInt(rawSlotHex as `0x${string}`);
