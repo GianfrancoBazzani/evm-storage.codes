@@ -149,7 +149,7 @@ export default function AnalyzeWizardButton({
   }, [chains, initialChainId]);
 
   // Address management with zod validation
-  const [address, setAddress] = useState<string | undefined>(initialAddress);
+  const [address, setAddress] = useState<string>(initialAddress ?? "");
   const [sourceAddress, setSourceAddress] = useState<string | undefined>(
     initialAddress
   );
@@ -214,7 +214,7 @@ export default function AnalyzeWizardButton({
     setCompiledContracts({});
     setChainsPopoverOpen(false);
     setChainName(undefined);
-    setAddress(undefined);
+    setAddress("");
     setSourceAddress(undefined);
     setProxyInfo(undefined);
     setCompilerBinary("");
