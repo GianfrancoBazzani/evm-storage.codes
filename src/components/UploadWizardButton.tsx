@@ -37,6 +37,11 @@ interface UploadWizardButtonProps {
   triggerVisualizerId?: number;
 }
 
+type FileSelection = {
+  file: File;
+  path: string;
+};
+
 // viaIR management
 function isViaIRSupported(version: string) {
   if (!version) return false;
@@ -77,6 +82,7 @@ export default function UploadWizardButton({
   const [noSolidityFilesFound, setNoSolidityFilesFound] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dirInputRef = useRef<HTMLInputElement>(null);
+  const filePathByFileRef = useRef(new WeakMap<File, string>());
 
   // Compiler management
   const [compilerVersions, setCompilerVersions] = useState<
@@ -121,6 +127,7 @@ export default function UploadWizardButton({
     setIsDragging(false);
     setSelectedFiles([]);
     setNoSolidityFilesFound(false);
+    filePathByFileRef.current = new WeakMap();
     setCompilerVersion("");
     setAdvancedOptionsEnabled(false);
     setEvmVersion(undefined);
@@ -190,27 +197,140 @@ export default function UploadWizardButton({
   // drag-and-drop) - filter here so a whole-project folder doesn't also pull
   // in configs, artifacts, or other unrelated files it contains.
   function isSolidityFile(file: File): boolean {
-    return file.name.toLowerCase().endsWith(".sol");
+    return isSolidityPath(file.name);
   }
 
-  function handleDrop(e: DragEvent<HTMLDivElement>) {
+  function isSolidityPath(path: string): boolean {
+    return path.toLowerCase().endsWith(".sol");
+  }
+
+  function setSelectedSolidityFiles(fileSelections: FileSelection[]) {
+    const solFiles: File[] = [];
+    const nextPathMap = new WeakMap<File, string>();
+
+    for (const { file, path } of fileSelections) {
+      if (!isSolidityFile(file)) {
+        continue;
+      }
+      solFiles.push(file);
+      nextPathMap.set(file, path);
+    }
+
+    filePathByFileRef.current = nextPathMap;
+    setNoSolidityFilesFound(solFiles.length === 0);
+    setSelectedFiles(solFiles);
+  }
+
+  async function handleDrop(e: DragEvent<HTMLDivElement>) {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
 
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const solFiles = Array.from(e.dataTransfer.files).filter(isSolidityFile);
-      setNoSolidityFilesFound(solFiles.length === 0);
-      setSelectedFiles(solFiles);
+    const hasDroppedFileItems =
+      Array.from(e.dataTransfer.items).some((item) => item.kind === "file") ||
+      e.dataTransfer.files.length > 0;
+    const droppedFiles = await getDroppedFiles(e.dataTransfer);
+    if (droppedFiles.length > 0) {
+      setSelectedSolidityFiles(droppedFiles);
+      return;
+    }
+    if (hasDroppedFileItems) {
+      setSelectedSolidityFiles([]);
     }
   }
 
   function handleFileInputChange(e: ChangeEvent<HTMLInputElement>) {
     if (e.target.files && e.target.files.length > 0) {
-      const solFiles = Array.from(e.target.files).filter(isSolidityFile);
-      setNoSolidityFilesFound(solFiles.length === 0);
-      setSelectedFiles(solFiles);
+      setSelectedSolidityFiles(
+        Array.from(e.target.files).map((file) => ({
+          file,
+          path: file.webkitRelativePath || file.name,
+        }))
+      );
     }
+  }
+
+  async function getDroppedFiles(
+    dataTransfer: DataTransfer
+  ): Promise<FileSelection[]> {
+    const entries = Array.from(dataTransfer.items)
+      .filter((item) => item.kind === "file")
+      .map((item) => item.webkitGetAsEntry?.())
+      .filter((entry): entry is FileSystemEntry => Boolean(entry));
+
+    if (entries.length > 0) {
+      try {
+        const nestedFiles = await Promise.all(
+          entries.map((entry) => readDroppedEntry(entry))
+        );
+        return nestedFiles.flat();
+      } catch (error) {
+        console.error("Error reading dropped files:", error);
+      }
+    }
+
+    return Array.from(dataTransfer.files).map((file) => ({
+      file,
+      path: file.name,
+    }));
+  }
+
+  async function readDroppedEntry(
+    entry: FileSystemEntry,
+    parentPath = ""
+  ): Promise<FileSelection[]> {
+    const entryPath = `${parentPath}${entry.name}`;
+
+    if (entry.isFile) {
+      if (!isSolidityPath(entry.name)) {
+        return [];
+      }
+      const file = await readDroppedFileEntry(entry as FileSystemFileEntry);
+      return [{ file, path: entryPath }];
+    }
+
+    if (entry.isDirectory) {
+      const childEntries = await readDroppedDirectoryEntries(
+        entry as FileSystemDirectoryEntry
+      );
+      const childFiles = await Promise.all(
+        childEntries.map((childEntry) =>
+          readDroppedEntry(childEntry, `${entryPath}/`)
+        )
+      );
+      return childFiles.flat();
+    }
+
+    return [];
+  }
+
+  function readDroppedFileEntry(
+    entry: FileSystemFileEntry
+  ): Promise<File> {
+    return new Promise((resolve, reject) => {
+      entry.file(resolve, reject);
+    });
+  }
+
+  async function readDroppedDirectoryEntries(
+    entry: FileSystemDirectoryEntry
+  ): Promise<FileSystemEntry[]> {
+    const reader = entry.createReader();
+    const entries: FileSystemEntry[] = [];
+
+    while (true) {
+      const batch = await new Promise<FileSystemEntry[]>(
+        (resolve, reject) => {
+          reader.readEntries(resolve, reject);
+        }
+      );
+      if (batch.length === 0) {
+        break;
+      }
+      entries.push(...batch);
+    }
+
+    return entries;
   }
 
   function triggerFileInput() {
@@ -226,17 +346,22 @@ export default function UploadWizardButton({
   }
 
   function removeFile(fileToRemove: File) {
+    filePathByFileRef.current.delete(fileToRemove);
     setSelectedFiles((prevFiles) =>
       prevFiles.filter((file) => file !== fileToRemove)
     );
   }
 
   // Files picked via the webkitdirectory input carry their path (relative to
-  // the selected folder) in webkitRelativePath, needed so cross-file Solidity
-  // imports (e.g. "../lib/Foo.sol") resolve against the right source keys
-  // instead of colliding on bare filenames.
+  // the selected folder), and folder drops use the same path shape via
+  // filePathByFileRef. This keeps cross-file imports resolving against the
+  // right source keys instead of colliding on bare filenames.
   function filePathOf(file: File): string {
-    return file.webkitRelativePath || file.name;
+    return (
+      filePathByFileRef.current.get(file) ||
+      file.webkitRelativePath ||
+      file.name
+    );
   }
 
   // Compile function
@@ -540,6 +665,14 @@ export default function UploadWizardButton({
     }
   }
 
+  // A folder-sourced path always contains "/" (from webkitRelativePath or
+  // the recursive drop walk); a plain file selection never does. Only offer
+  // the folder picker when the current selection didn't already come from
+  // one.
+  const isFolderSelection = selectedFiles.some((file) =>
+    filePathOf(file).includes("/")
+  );
+
   return (
     <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
       <DialogTrigger asChild>
@@ -553,23 +686,51 @@ export default function UploadWizardButton({
 
       {/* Wizard Step 1: Upload Sources */}
       {wizardStep === WizardStep.SELECT_COMPILER && (
-        <DialogContent className="bg-black border-green-500 p-6 rounded-md">
-          <DialogHeader>
+        <DialogContent className="bg-black border-green-500 p-6 rounded-md max-h-[calc(100vh-2rem)] overflow-x-hidden overflow-y-auto minimal-h-scrollbar-green sm:max-w-xl">
+          <DialogHeader className="min-w-0 pr-8">
             <DialogTitle className="text-green-500">
               Upload And Compile Contracts
             </DialogTitle>
             <DialogDescription
               id="upload-dialog-description"
-              className=" text-green-800"
+              className="break-words text-green-800"
             >
               Upload one or more Solidity source files, or a whole folder.
               They will be compiled together.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 mt-4">
+          <div className="mx-auto mt-4 flex w-full max-w-lg min-w-0 flex-col gap-4">
+            {/* Hidden pickers, kept out of the clickable drop zone below:
+                input.click() dispatches its own real, bubbling click event,
+                and if these were nested inside that zone's onClick div, the
+                synthesized click would bubble straight back into it and
+                re-trigger the *other* picker - stopPropagation on the
+                originating click can't prevent this since it's a separate,
+                later event. */}
+            <input
+              type="file"
+              multiple
+              ref={fileInputRef}
+              className="hidden"
+              onChange={handleFileInputChange}
+              accept=".sol"
+            />
+            <input
+              type="file"
+              multiple
+              ref={(el) => {
+                dirInputRef.current = el;
+                // webkitdirectory isn't part of React's typed input
+                // attributes, so it has to be set imperatively.
+                el?.setAttribute("webkitdirectory", "");
+              }}
+              className="hidden"
+              onChange={handleFileInputChange}
+            />
+
             {/* File upload area */}
             <div
-              className={`w-full max-w-lg mb-8 border-2 ${
+              className={`w-full min-w-0 border-2 ${
                 isDragging
                   ? "border-green-500 bg-green-900/20"
                   : "border-green-500/50 bg-black"
@@ -579,77 +740,85 @@ export default function UploadWizardButton({
               onDrop={handleDrop}
               onClick={triggerFileInput}
             >
-              <input
-                type="file"
-                multiple
-                ref={fileInputRef}
-                className="hidden"
-                onChange={handleFileInputChange}
-                accept=".sol"
-              />
-              <input
-                type="file"
-                multiple
-                ref={(el) => {
-                  dirInputRef.current = el;
-                  // webkitdirectory isn't part of React's typed input
-                  // attributes, so it has to be set imperatively.
-                  el?.setAttribute("webkitdirectory", "");
-                }}
-                className="hidden"
-                onChange={handleFileInputChange}
-              />
-
               {selectedFiles.length > 0 ? (
                 <div className="space-y-2">
-                  {selectedFiles.map((file, index) => (
-                    <div
-                      className="flex items-center justify-between"
-                      key={index}
-                    >
-                      <div className="flex items-center">
-                        <FileIcon className="h-6 w-6 mr-2 text-green-500" />
-                        <span className="text-green-500 truncate max-w-[250px]">
-                          {filePathOf(file)}
-                        </span>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeFile(file);
-                        }}
-                        className="text-green-500 hover:text-green-300"
-                      >
-                        <X className="h-5 w-5" />
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      triggerDirInput();
-                    }}
-                    className="text-green-500/70 text-xs underline hover:text-green-400"
+                  <p className="text-green-500 text-sm">
+                    Selected {selectedFiles.length} Solidity{" "}
+                    {selectedFiles.length === 1 ? "file" : "files"}
+                  </p>
+                  <div
+                    className="max-h-64 space-y-2 overflow-x-hidden overflow-y-auto pr-2 minimal-h-scrollbar-green
+                    [&::-webkit-scrollbar]:w-1.5
+                    [&::-webkit-scrollbar-track]:bg-transparent
+                    [&::-webkit-scrollbar-thumb]:bg-green-500
+                    hover:[&::-webkit-scrollbar-thumb]:bg-green-600
+                    [&::-webkit-scrollbar-thumb]:rounded-sm"
                   >
-                    or select a folder
-                  </button>
+                    {selectedFiles.map((file) => {
+                      const filePath = filePathOf(file);
+                      return (
+                        <div
+                          className="flex w-full min-w-0 items-center justify-between gap-3 overflow-hidden text-left"
+                          key={`${filePath}-${file.lastModified}-${file.size}`}
+                        >
+                          <div className="flex min-w-0 flex-1 items-center overflow-hidden">
+                            <FileIcon className="h-6 w-6 mr-2 shrink-0 text-green-500" />
+                            <span
+                              className="block min-w-0 flex-1 truncate text-green-500"
+                              title={filePath}
+                            >
+                              {filePath}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeFile(file);
+                            }}
+                            className="shrink-0 text-green-500 hover:text-green-300"
+                          >
+                            <X className="h-5 w-5" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {selectedFiles.length > 8 && (
+                    <p className="text-green-500/50 text-xs">
+                      Scroll to review all selected files.
+                    </p>
+                  )}
+                  {!isFolderSelection && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        triggerDirInput();
+                      }}
+                      className="text-green-500/70 text-xs underline hover:text-green-400"
+                    >
+                      or select a folder
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="flex flex-col items-center">
                   <Upload className="h-10 w-10 mb-2 text-green-500" />
                   <p className="text-green-500 mb-1">UPLOAD CONTRACT FILES</p>
                   <p className="text-green-500/70 text-sm">
-                    Drag and drop or click to browse, or{" "}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        triggerDirInput();
-                      }}
-                      className="underline hover:text-green-400"
-                    >
-                      select a folder
-                    </button>
+                    Drag and drop or click to browse
                   </p>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      triggerDirInput();
+                    }}
+                    className="text-green-500/70 text-xs underline hover:text-green-400 mt-2"
+                  >
+                    or select a folder
+                  </button>
                   <p className="text-green-500/50 text-xs mt-2">
                     .sol files supported
                   </p>
