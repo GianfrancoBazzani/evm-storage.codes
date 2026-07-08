@@ -204,21 +204,56 @@ export default function UploadWizardButton({
     return path.toLowerCase().endsWith(".sol");
   }
 
-  function setSelectedSolidityFiles(fileSelections: FileSelection[]) {
-    const solFiles: File[] = [];
+  function getSolidityFileSelections(fileSelections: FileSelection[]) {
+    return fileSelections.filter(({ file, path }) => {
+      return isSolidityFile(file) && isSolidityPath(path);
+    });
+  }
+
+  function applySelectedSolidityFiles(fileSelections: FileSelection[]) {
     const nextPathMap = new WeakMap<File, string>();
 
     for (const { file, path } of fileSelections) {
-      if (!isSolidityFile(file)) {
-        continue;
-      }
-      solFiles.push(file);
       nextPathMap.set(file, path);
     }
 
     filePathByFileRef.current = nextPathMap;
-    setNoSolidityFilesFound(solFiles.length === 0);
-    setSelectedFiles(solFiles);
+    setSelectedFiles(fileSelections.map(({ file }) => file));
+  }
+
+  function setSelectedSolidityFiles(fileSelections: FileSelection[]) {
+    const solFileSelections = getSolidityFileSelections(fileSelections);
+
+    applySelectedSolidityFiles(solFileSelections);
+    setNoSolidityFilesFound(solFileSelections.length === 0);
+  }
+
+  function appendSelectedSolidityFiles(fileSelections: FileSelection[]) {
+    const solFileSelections = getSolidityFileSelections(fileSelections);
+
+    if (solFileSelections.length === 0) {
+      setNoSolidityFilesFound(selectedFiles.length === 0);
+      return;
+    }
+
+    const mergedSelections = new Map<string, FileSelection>();
+    for (const file of selectedFiles) {
+      const path = filePathOf(file);
+      mergedSelections.set(path, { file, path });
+    }
+    for (const fileSelection of solFileSelections) {
+      mergedSelections.set(fileSelection.path, fileSelection);
+    }
+
+    applySelectedSolidityFiles(Array.from(mergedSelections.values()));
+    setNoSolidityFilesFound(false);
+  }
+
+  function hasDroppedFileItems(dataTransfer: DataTransfer) {
+    return (
+      Array.from(dataTransfer.items).some((item) => item.kind === "file") ||
+      dataTransfer.files.length > 0
+    );
   }
 
   async function handleDrop(e: DragEvent<HTMLDivElement>) {
@@ -226,17 +261,13 @@ export default function UploadWizardButton({
     e.stopPropagation();
     setIsDragging(false);
 
-    const hasDroppedFileItems =
-      Array.from(e.dataTransfer.items).some((item) => item.kind === "file") ||
-      e.dataTransfer.files.length > 0;
-    const droppedFiles = await getDroppedFiles(e.dataTransfer);
-    if (droppedFiles.length > 0) {
-      setSelectedSolidityFiles(droppedFiles);
+    const droppedFileItems = hasDroppedFileItems(e.dataTransfer);
+    if (!droppedFileItems) {
       return;
     }
-    if (hasDroppedFileItems) {
-      setSelectedSolidityFiles([]);
-    }
+
+    const droppedFiles = await getDroppedFiles(e.dataTransfer);
+    appendSelectedSolidityFiles(droppedFiles);
   }
 
   function handleFileInputChange(e: ChangeEvent<HTMLInputElement>) {
