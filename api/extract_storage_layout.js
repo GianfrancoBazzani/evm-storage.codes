@@ -5,6 +5,7 @@ import {
 import { brotliDecompressSync } from "zlib";
 import { findAll, astDereferencer, isNodeType } from "solidity-ast/utils.js";
 import { Redis } from "@upstash/redis";
+import { getEip1967ProxyInfo, sameAddress } from "./_lib/eip1967.js";
 
 export async function POST(request) {
   try {
@@ -23,6 +24,7 @@ export async function POST(request) {
     const contractName = decompressedDataJson.contractName;
     const chainId = decompressedDataJson.chainId;
     const address = decompressedDataJson.address;
+    const sourceAddress = decompressedDataJson.sourceAddress;
 
     // Build decodeSrc function
     const decodeSrc = solcInputOutputDecoder(solcInput, solcOutput);
@@ -53,12 +55,35 @@ export async function POST(request) {
       getNamespacedCompilationContext(sourceName, contractDef, namespacedOutput)
     );
 
-    // Cache the storage layout in the database if it is not already cached
+    // Cache the storage layout in the database if it is not already cached.
     if (chainId && address) {
       try {
+        let integrityAddress = address;
+        let cacheProxyInfo = undefined;
+        if (sourceAddress && !sameAddress(sourceAddress, address)) {
+          const proxyResolution = await getEip1967ProxyInfo(
+            Number(chainId),
+            address
+          );
+          if (
+            !proxyResolution.proxyInfo ||
+            !sameAddress(
+              proxyResolution.proxyInfo.implementationAddress,
+              sourceAddress
+            )
+          ) {
+            console.warn(
+              "Proxy implementation does not match provided sourceAddress; storage layout wont be cached"
+            );
+            throw new Error("");
+          }
+          integrityAddress = sourceAddress;
+          cacheProxyInfo = proxyResolution.proxyInfo;
+        }
+
         // Minimal integrity test
         const response = await fetch(
-          `https://sourcify.dev/server/v2/contract/${chainId}/${address}?fields=stdJsonInput,compilation`,
+          `https://sourcify.dev/server/v2/contract/${chainId}/${integrityAddress}?fields=stdJsonInput,compilation`,
           {
             method: "GET",
           }
@@ -92,6 +117,11 @@ export async function POST(request) {
         await redis.set(cacheKey, {
           storageLayout: storageLayout,
           contractName: contractName,
+          sourceAddress:
+            sourceAddress && !sameAddress(sourceAddress, address)
+              ? sourceAddress
+              : undefined,
+          proxyInfo: cacheProxyInfo,
         });
         //await redis.set(cacheKey, storageLayout, {
         //  nx: true, // only store if not already exists
