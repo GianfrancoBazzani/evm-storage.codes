@@ -136,11 +136,10 @@ function getStorageLayoutWrapper(
     idToColor[`${item.contract}:${item.label}`] = colorHash.hex(item.label);
   });
 
-  let maxSlot = 0;
   const slots: Array<SlotRow> = [];
   if (storageItems.length > 0) {
     // Set maxSlot
-    maxSlot = Number(
+    let maxSlot = Number(
       storageItems
         .map((storageItem) => storageItem.slot)
         .reduce((previousValue, currentValue) =>
