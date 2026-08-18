@@ -54,7 +54,7 @@
     "@vitejs/plugin-react-swc": "^4.3.0",
     "babelify": "^10.0.0",
     "browserify": "^17.0.1",
-    "eslint": "^9.39.1",
+    "eslint": "^10.8.1",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
