@@ -59,7 +59,7 @@
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3",
+    "typescript": "^7.0.2",
     "typescript-eslint": "^8.49.0",
     "util": "^0.12.5",
     "vercel": "^53.4.0",
