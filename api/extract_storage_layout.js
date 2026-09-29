@@ -5,6 +5,8 @@ import {
 import { brotliDecompressSync } from "zlib";
 import { findAll, astDereferencer, isNodeType } from "solidity-ast/utils.js";
 import { Redis } from "@upstash/redis";
+import { getEip1967ProxyInfo, sameAddress } from "./_lib/eip1967.js";
+import { VALUE_METADATA_VERSION } from "./_lib/value-metadata-version.js";
 
 export async function POST(request) {
   try {
@@ -23,6 +25,7 @@ export async function POST(request) {
     const contractName = decompressedDataJson.contractName;
     const chainId = decompressedDataJson.chainId;
     const address = decompressedDataJson.address;
+    const sourceAddress = decompressedDataJson.sourceAddress;
 
     // Build decodeSrc function
     const decodeSrc = solcInputOutputDecoder(solcInput, solcOutput);
@@ -45,20 +48,63 @@ export async function POST(request) {
     const deref = astDereferencer(solcOutput);
 
     // Extract the storage layout
+    const rawStorageLayout =
+      solcOutput.contracts[sourceName][contractDef.name].storageLayout;
+    const namespacedContext = getNamespacedCompilationContext(
+      sourceName,
+      contractDef,
+      namespacedOutput
+    );
     const storageLayout = extractStorageLayout(
       contractDef,
       decodeSrc,
       deref,
-      solcOutput.contracts[sourceName][contractDef.name].storageLayout,
-      getNamespacedCompilationContext(sourceName, contractDef, namespacedOutput)
+      rawStorageLayout,
+      namespacedContext
     );
 
-    // Cache the storage layout in the database if it is not already cached
+    // upgrades-core's extractStorageLayout only keeps label/members/
+    // numberOfBytes on each type entry - it deliberately drops solc's
+    // `encoding`/`base`/`key`/`value` fields, which it doesn't need for its
+    // own purposes but which the frontend needs to decode on-chain values
+    // (encoding distinguishes a plain scalar from a mapping/array/dynamic
+    // bytes, and base/key/value point at the relevant sub-type). Merge them
+    // back in from the raw solc output(s) we already have on hand.
+    enrichTypesWithSolcFields(
+      storageLayout,
+      rawStorageLayout,
+      namespacedContext?.storageLayout
+    );
+
+    // Cache the storage layout in the database if it is not already cached.
     if (chainId && address) {
       try {
+        let integrityAddress = address;
+        let cacheProxyInfo = undefined;
+        if (sourceAddress && !sameAddress(sourceAddress, address)) {
+          const proxyResolution = await getEip1967ProxyInfo(
+            Number(chainId),
+            address
+          );
+          if (
+            !proxyResolution.proxyInfo ||
+            !sameAddress(
+              proxyResolution.proxyInfo.implementationAddress,
+              sourceAddress
+            )
+          ) {
+            console.warn(
+              "Proxy implementation does not match provided sourceAddress; storage layout wont be cached"
+            );
+            throw new Error("");
+          }
+          integrityAddress = sourceAddress;
+          cacheProxyInfo = proxyResolution.proxyInfo;
+        }
+
         // Minimal integrity test
         const response = await fetch(
-          `https://sourcify.dev/server/v2/contract/${chainId}/${address}?fields=stdJsonInput,compilation`,
+          `https://sourcify.dev/server/v2/contract/${chainId}/${integrityAddress}?fields=stdJsonInput,compilation`,
           {
             method: "GET",
           }
@@ -92,6 +138,16 @@ export async function POST(request) {
         await redis.set(cacheKey, {
           storageLayout: storageLayout,
           contractName: contractName,
+          sourceAddress:
+            sourceAddress && !sameAddress(sourceAddress, address)
+              ? sourceAddress
+              : undefined,
+          proxyInfo: cacheProxyInfo,
+          // Bump this if the shape of data value-decoding relies on
+          // (currently: types[].encoding/base/key/value) changes again -
+          // get_cached_storage_layout.js treats a mismatch as a cache miss
+          // so old entries get regenerated instead of silently degrading.
+          valueMetadataVersion: VALUE_METADATA_VERSION,
         });
         //await redis.set(cacheKey, storageLayout, {
         //  nx: true, // only store if not already exists
@@ -113,6 +169,21 @@ export async function POST(request) {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
+  }
+}
+
+function enrichTypesWithSolcFields(layout, ...rawLayouts) {
+  const rawTypes = Object.assign(
+    {},
+    ...rawLayouts.filter(Boolean).map((rawLayout) => rawLayout.types ?? {})
+  );
+  for (const [id, type] of Object.entries(layout.types)) {
+    const raw = rawTypes[id];
+    if (!raw) continue;
+    if (raw.encoding !== undefined) type.encoding = raw.encoding;
+    if (raw.base !== undefined) type.base = raw.base;
+    if (raw.key !== undefined) type.key = raw.key;
+    if (raw.value !== undefined) type.value = raw.value;
   }
 }
 
