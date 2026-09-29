@@ -1,6 +1,7 @@
 import type { StorageLayout, StorageItem } from "@openzeppelin/upgrades-core";
 import { deriveNamespaceBaseSlot } from "@/lib/erc7201";
 import { normalizeUint256Literal } from "@/lib/integer-literals";
+import type { Eip1967ProxyInfo } from "@/lib/eip1967";
 
 const EXPORT_SCHEMA_VERSION = "evm-storage.codes/storage-layout-export@1";
 const JSON_INDENT_SPACES = 2;
@@ -14,6 +15,8 @@ export type LayoutEntry = {
   contractName: string;
   chainId: number | undefined;
   address: string | undefined;
+  sourceAddress?: string;
+  proxyInfo?: Eip1967ProxyInfo;
   storageLayout: StorageLayout;
 };
 
@@ -117,7 +120,14 @@ function buildWrapper(
   mode: "full" | "tab",
   namespace?: string,
 ): Record<string, unknown> {
-  const { contractName, chainId, address, storageLayout } = entry;
+  const {
+    contractName,
+    chainId,
+    address,
+    sourceAddress,
+    proxyInfo,
+    storageLayout,
+  } = entry;
   const allTypes = (storageLayout.types ?? {}) as RawTypes;
 
   if (mode === "full") {
@@ -150,6 +160,8 @@ function buildWrapper(
       contractName,
       chainId,
       address,
+      sourceAddress,
+      proxyInfo,
       solcVersion: storageLayout.solcVersion,
       layoutVersion: storageLayout.layoutVersion,
       baseSlot: normalizedRootBaseSlot(storageLayout),
@@ -182,6 +194,8 @@ function buildWrapper(
     contractName,
     chainId,
     address,
+    sourceAddress,
+    proxyInfo,
     solcVersion: storageLayout.solcVersion,
     layoutVersion: storageLayout.layoutVersion,
     namespace,
