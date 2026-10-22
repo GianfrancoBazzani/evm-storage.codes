@@ -152,7 +152,7 @@ export default function AnalyzeWizardButton({
   const validateAddress = (addr: string) => {
     const result = ethAddressSchema.safeParse(addr);
     if (!result.success) {
-      setAddressError(result.error.errors[0].message);
+      setAddressError(result.error.issues[0].message);
     } else {
       setAddressError(undefined);
     }
