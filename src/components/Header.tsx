@@ -1,4 +1,4 @@
-import { Github } from "lucide-react";
+import { Github } from "@/lib/github-icon";
 
 export default function Header() {
   return (

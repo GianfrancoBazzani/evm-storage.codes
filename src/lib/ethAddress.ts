@@ -4,8 +4,8 @@ import { z } from "zod";
 export const ethAddressSchema = z
   .string()
   .length(42, {
-    message: "Must be exactly 42 characters long including leading '0x'",
+    error: "Must be exactly 42 characters long including leading '0x'",
   })
   .regex(/^0x[0-9a-fA-F]*$/, {
-    message: "Must contain only hexadecimal characters",
+    error: "Must contain only hexadecimal characters",
   });

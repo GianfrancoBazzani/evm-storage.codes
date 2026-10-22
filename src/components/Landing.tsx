@@ -1,4 +1,5 @@
-import { Github, Coffee } from "lucide-react";
+import { Coffee } from "lucide-react";
+import { Github } from "@/lib/github-icon";
 import UploadWizardButton from "@/components/UploadWizardButton";
 import AnalyzeWizardButton from "@/components/AnalyzeWizardButton";
 
