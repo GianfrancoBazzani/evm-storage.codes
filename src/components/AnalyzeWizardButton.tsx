@@ -51,6 +51,10 @@ import type { SolcInput, SolcOutput } from "@openzeppelin/upgrades-core";
 import type { Dispatch, SetStateAction } from "react";
 import type { StorageLayout } from "@openzeppelin/upgrades-core";
 import type { ReactNode } from "react";
+import type {
+  Eip1967ProxyInfo,
+  Eip1967ProxyInfoResponse,
+} from "@/lib/eip1967";
 
 interface AnalyzeWizardButtonProps {
   setParentDialogOpen?: Dispatch<SetStateAction<boolean>>;
@@ -146,6 +150,12 @@ export default function AnalyzeWizardButton({
 
   // Address management with zod validation
   const [address, setAddress] = useState<string | undefined>(initialAddress);
+  const [sourceAddress, setSourceAddress] = useState<string | undefined>(
+    initialAddress
+  );
+  const [proxyInfo, setProxyInfo] = useState<Eip1967ProxyInfo | undefined>(
+    undefined
+  );
   const [addressError, setAddressError] = useState<string | undefined>(
     undefined
   );
@@ -205,6 +215,8 @@ export default function AnalyzeWizardButton({
     setChainsPopoverOpen(false);
     setChainName(undefined);
     setAddress(undefined);
+    setSourceAddress(undefined);
+    setProxyInfo(undefined);
     setCompilerBinary("");
     setSolcInput(undefined);
     setSolcOutput(undefined);
@@ -232,8 +244,26 @@ export default function AnalyzeWizardButton({
     setWizardStep(WizardStep.FETCHING);
 
     const chainId = chains.find((_chain) => _chain.name === chainName)?.chainId;
+    if (!chainId || !address) {
+      setWizardStep(WizardStep.SELECT_ADDRESS);
+      return;
+    }
+
+    // Proxy detection is a convenience: if it fails (no public RPC for the
+    // chain, RPCs down, ...) fall back to analyzing the address as-is
+    // rather than blocking the whole flow.
+    let detectedProxyInfo: Eip1967ProxyInfo | undefined;
+    try {
+      detectedProxyInfo = await fetchEip1967ProxyInfo(chainId, address);
+    } catch (error) {
+      console.warn("EIP-1967 proxy detection failed:", error);
+    }
+    const sourcifyAddress = detectedProxyInfo?.implementationAddress ?? address;
+    setProxyInfo(detectedProxyInfo);
+    setSourceAddress(sourcifyAddress);
+
     const response = await fetch(
-      `https://sourcify.dev/server/v2/contract/${chainId}/${address}?fields=stdJsonInput,compilation`,
+      `https://sourcify.dev/server/v2/contract/${chainId}/${sourcifyAddress}?fields=stdJsonInput,compilation`,
       {
         method: "GET",
       }
@@ -241,9 +271,12 @@ export default function AnalyzeWizardButton({
     if (!response.ok) {
       if (response.status === 404) {
         const data = await response.json();
+        const targetDescription = detectedProxyInfo
+          ? `Implementation ${sourcifyAddress} for proxy ${address}`
+          : `Contract at ${data.address}`;
         setFetchArtifactsError(
           <>
-            {`Contract at ${data.address} on chain id ${data.chainId} not verified on Sourcify. Please verify your contract using the `}
+            {`${targetDescription} on chain id ${data.chainId} not verified on Sourcify. Please verify your contract using the `}
             <a
               href="https://verify.sourcify.dev/"
               target="_blank"
@@ -504,6 +537,12 @@ export default function AnalyzeWizardButton({
   async function handleLoadStorageLayout() {
     setWizardStep(WizardStep.LOADING);
     if (!selectedContract || !solcInput || !solcOutput) return;
+    const displaySourceAddress =
+      sourceAddress &&
+      address &&
+      sourceAddress.toLowerCase() !== address.toLowerCase()
+        ? sourceAddress
+        : undefined;
 
     // Extract storage layout using backend
     let storageLayout: StorageLayout | undefined = undefined;
@@ -520,6 +559,7 @@ export default function AnalyzeWizardButton({
           contractName: selectedContract,
           chainId: chains.find((_chain) => _chain.name === chainName)?.chainId,
           address: address,
+          sourceAddress: sourceAddress,
         })
       );
       const _compressedBodyRequest = _brotli.compress(
@@ -557,7 +597,9 @@ export default function AnalyzeWizardButton({
             id: 0,
             storageLayout: storageLayout!,
             chainId: chains.find((_chain) => _chain.name === chainName)?.chainId,
-            address: address
+            address: address,
+            sourceAddress: displaySourceAddress,
+            proxyInfo: proxyInfo,
           },
           ...prevLayouts.slice(triggerVisualizerId + 1),
         ];
@@ -572,7 +614,9 @@ export default function AnalyzeWizardButton({
           id: 0,
           storageLayout: storageLayout!,
           chainId: chains.find((_chain) => _chain.name === chainName)?.chainId,
-          address: address
+          address: address,
+          sourceAddress: displaySourceAddress,
+          proxyInfo: proxyInfo,
         },
       ];
     });
@@ -583,6 +627,26 @@ export default function AnalyzeWizardButton({
     if (setParentDialogOpen) {
       setParentDialogOpen(false);
     }
+  }
+
+  async function fetchEip1967ProxyInfo(
+    chainId: number,
+    address: string
+  ): Promise<Eip1967ProxyInfo | undefined> {
+    const response = await fetch("/api/get_eip1967_proxy_info", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chainId, address }),
+    });
+    if (!response.ok) {
+      throw new Error(
+        (await response.json()).message ?? "EIP-1967 proxy detection failed."
+      );
+    }
+
+    const proxyInfoResponse =
+      (await response.json()) as Eip1967ProxyInfoResponse;
+    return proxyInfoResponse.proxyInfo;
   }
 
   return (
@@ -710,6 +774,12 @@ export default function AnalyzeWizardButton({
             >
               Please wait while your contract source files are being fetched
               from sourcify
+              {proxyInfo && (
+                <span className="block text-green-500 mt-2">
+                  Upgradeable proxy detected. Fetching the sources of the active
+                  implementation at {proxyInfo.implementationAddress}.
+                </span>
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-center">
@@ -733,10 +803,10 @@ export default function AnalyzeWizardButton({
               {
                 //@ts-expect-error optimizer is not typed in SolcInput settings
                 solcInput?.settings?.optimizer?.enabled && (
-                  <p>
+                  <span className="block">
                     Compilation might take a while because the optimizer is
                     enabled.
-                  </p>
+                  </span>
                 )
               }
             </DialogDescription>
@@ -838,6 +908,12 @@ export default function AnalyzeWizardButton({
             >
               The contracts have been compiled successfully. Please select a
               contract to load storage layout.
+              {proxyInfo && (
+                <span className="block text-green-500 mt-2">
+                  {address} is an upgradeable proxy: these contracts come from its
+                  active implementation at {proxyInfo.implementationAddress}.
+                </span>
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="overflow-hidden">
