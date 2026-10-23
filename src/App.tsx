@@ -73,6 +73,8 @@ function App() {
               storageLayout: data.storageLayout,
               chainId: Number(chainId),
               address: address ? address : undefined,
+              sourceAddress: data.sourceAddress,
+              proxyInfo: data.proxyInfo,
             },
           ]);
         } else {
@@ -130,6 +132,8 @@ function App() {
                     id={storageLayout.id}
                     chainId={storageLayout.chainId}
                     address={storageLayout.address}
+                    sourceAddress={storageLayout.sourceAddress}
+                    proxyInfo={storageLayout.proxyInfo}
                   />
                 ))}
               </div>
