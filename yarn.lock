@@ -6591,7 +6591,7 @@ __metadata:
     typescript-eslint: "npm:^8.72.0"
     util: "npm:^0.12.5"
     vercel: "npm:^65.1.0"
-    viem: "npm:^2.57.10"
+    viem: "npm:^2.57.11"
     vite: "npm:^8.3.5"
     zod: "npm:^4.6.7"
   languageName: unknown
@@ -10452,9 +10452,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"viem@npm:^2.57.10":
-  version: 2.57.10
-  resolution: "viem@npm:2.57.10"
+"viem@npm:^2.57.11":
+  version: 2.57.11
+  resolution: "viem@npm:2.57.11"
   dependencies:
     "@noble/curves": "npm:1.9.1"
     "@noble/hashes": "npm:1.8.0"
@@ -10469,7 +10469,7 @@ __metadata:
   peerDependenciesMeta:
     typescript:
       optional: true
-  checksum: daee11cc0bda2f779020bf0456f2426b4c1697c58c72ff17a63c154cc20615af49b50ee9c0cc7c94f99e9f9c2818bf4e3350e0ced817fc204fcdca891a18001c
+  checksum: 79a8347fbec3bea4e1761747c9d54fdadb3c4be76f35b7b4f28bc26b080f0c736087ea5734d8a192caa5c1670a99d5820a98b3789ccb22e09db761c13a1a431f
   languageName: node
   linkType: hard
 
