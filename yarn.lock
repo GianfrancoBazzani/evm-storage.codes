@@ -4511,7 +4511,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vercel/node@npm:27.0.0, @vercel/node@npm:^27.0.0":
+"@vercel/node@npm:27.0.0":
   version: 27.0.0
   resolution: "@vercel/node@npm:27.0.0"
   dependencies:
@@ -4539,6 +4539,37 @@ __metadata:
   peerDependencies:
     "@vercel/build-utils": 15.0.0
   checksum: bf0bc095e54c96180c533d61d302e6107a37d9eb358780a00c498df3db4f3bbddcd7e308875e222fec6da8d587ad4b8be7faf01ff1d628701c1972d1dc7bdf51
+  languageName: node
+  linkType: hard
+
+"@vercel/node@npm:^27.0.2":
+  version: 27.0.2
+  resolution: "@vercel/node@npm:27.0.2"
+  dependencies:
+    "@edge-runtime/node-utils": "npm:2.3.0"
+    "@edge-runtime/primitives": "npm:4.1.0"
+    "@edge-runtime/vm": "npm:3.2.0"
+    "@types/node": "npm:20.11.0"
+    "@vercel/error-utils": "npm:2.2.1"
+    "@vercel/nft": "npm:1.10.0"
+    "@vercel/static-config": "npm:3.4.4"
+    async-listen: "npm:3.0.0"
+    cjs-module-lexer: "npm:1.2.3"
+    edge-runtime: "npm:2.5.9"
+    es-module-lexer: "npm:1.4.1"
+    esbuild: "npm:0.27.0"
+    etag: "npm:1.8.1"
+    mime-types: "npm:2.1.35"
+    node-fetch: "npm:2.6.9"
+    path-to-regexp: "npm:6.1.0"
+    path-to-regexp-updated: "npm:path-to-regexp@6.3.0"
+    ts-morph: "npm:12.0.0"
+    tsx: "npm:4.21.0"
+    typescript: "npm:typescript@5.9.3"
+    undici: "npm:5.28.4"
+  peerDependencies:
+    "@vercel/build-utils": 15.0.2
+  checksum: 2fbc20d94a38ea30bc3b5917c127d782ca5c579f6cece23d8de03e99ee3388bda18ce6eb6fcd0e9e7b68080fed30876cb5a86baef33c0c94504206d66a0381d2
   languageName: node
   linkType: hard
 
@@ -6565,7 +6596,7 @@ __metadata:
     "@types/react-dom": "npm:^19.3.0"
     "@upstash/redis": "npm:^1.39.0"
     "@vercel/analytics": "npm:^2.0.1"
-    "@vercel/node": "npm:^27.0.0"
+    "@vercel/node": "npm:^27.0.2"
     "@vitejs/plugin-react-swc": "npm:^4.3.3"
     babelify: "npm:^10.0.0"
     brotli-wasm: "npm:^3.0.1"
